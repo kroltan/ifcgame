@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="ifcgame" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/ifcgame" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-DPHYSICS_DRAW_DEBUG" />
+					<Add directory="include" />
+				</Compiler>
+				<ExtraCommands>
+					<Add before="bash $(PROJECT_DIR)build/*.sh" />
+					<Add before="python3 $(PROJECT_DIR)build/*.py" />
+					<Mode after="always" />
+				</ExtraCommands>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/ifcgame" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add directory="include" />
+					<Add directory="include/entities" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-pedantic" />
+			<Add option="-Wextra" />
+			<Add option="-Wall" />
+			<Add option="-std=c11" />
+		</Compiler>
+		<Linker>
+			<Add library="m" />
+			<Add library="libenet" />
+			<Add library="chipmunk" />
+			<Add library="allegro_monolith" />
+		</Linker>
+		<ExtraCommands>
+			<Add after='cp -r &quot;$(PROJECT_DIR)assets/&quot; &quot;$(TARGET_OUTPUT_DIR)&quot;' />
+			<Mode after="always" />
+		</ExtraCommands>
+		<Unit filename="README.md" />
+		<Unit filename="assets/config.ini" />
+		<Unit filename="assets/entities/test.ini" />
+		<Unit filename="assets/entities/wall.ini" />
+		<Unit filename="assets/scenes/test.ini" />
+		<Unit filename="include/config.h" />
+		<Unit filename="include/connection.h" />
+		<Unit filename="include/console.h" />
+		<Unit filename="include/entities/configurable_entity.h" />
+		<Unit filename="include/entity.h" />
+		<Unit filename="include/entity_types.gen.h" />
+		<Unit filename="include/game_state.h" />
+		<Unit filename="include/graphics.h" />
+		<Unit filename="include/hashmap.h" />
+		<Unit filename="include/list.h" />
+		<Unit filename="include/physics_debug.h" />
+		<Unit filename="include/scene.h" />
+		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/config.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/connection.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/console.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/entities/configurable_entity.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/entity.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/game_state.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/graphics.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/hashmap.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/list.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/physics_debug.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/scene.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
