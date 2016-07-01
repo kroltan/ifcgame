@@ -68,6 +68,7 @@
 		<Unit filename="include/graphics.h" />
 		<Unit filename="include/hashmap.h" />
 		<Unit filename="include/list.h" />
+		<Unit filename="include/pack.h" />
 		<Unit filename="include/physics_debug.h" />
 		<Unit filename="include/scene.h" />
 		<Unit filename="main.c">
@@ -98,6 +99,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/list.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/pack.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/physics_debug.c">

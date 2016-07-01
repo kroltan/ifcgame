@@ -9,10 +9,12 @@
 #include <stdbool.h>
 
 static const uint32_t Entity_TAG = AL_ID('e', 'n', 't', 'y');
+size_t id_counter = 0;
 
 struct Entity {
     uint32_t TAG;
-    bool keep;
+    size_t id;
+    bool keep, dirty;
     const EntityType *type;
     cpBody *body;
     void *data;
@@ -23,6 +25,7 @@ Entity *entity_new(const EntityType *type) {
 
     Entity *ent = malloc(sizeof(Entity));
     ent->TAG = Entity_TAG;
+    ent->id = id_counter;
     ent->type = type;
     ent->body = body;
     ent->data = type->data_size
@@ -31,6 +34,8 @@ Entity *entity_new(const EntityType *type) {
 
     cpBodySetUserData(body, ent);
     cpSpaceAddBody(game.space, body);
+
+    id_counter++;
 
     entity_cb cb = ent->type->on_init;
     if (cb) cb(ent);
@@ -67,8 +72,18 @@ void entity_do_event(Entity *ent, ALLEGRO_EVENT *event) {
     if (cb) cb(ent, event);
 }
 
+size_t entity_id(const Entity *ent) {
+    return ent->id;
+}
+
 cpBody *entity_body(const Entity *ent) {
     return ent->body;
+}
+
+bool entity_flag_dirty(Entity *ent, bool dirty) {
+    bool old = ent->dirty;
+    ent->dirty = dirty;
+    return old;
 }
 
 void *entity_data(const Entity *ent) {

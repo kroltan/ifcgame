@@ -3,10 +3,13 @@
 #include "game_state.h"
 #include "graphics.h"
 
+#include "connection.h"
+
 #include <allegro5/allegro_primitives.h>
 
-#include <ctype.h>
 #include <stdbool.h>
+#include <ctype.h>
+#include <stdio.h>
 #include <math.h>
 
 #define BUFFER_SIZE 512
@@ -25,6 +28,12 @@ void init_console() {
     console.buffer_len = 0;
     console.caret_pos = 0;
     console.open = false;
+}
+
+static void console_clear() {
+    console.buffer[0] = '\0';
+    console.buffer_len = 0;
+    console.caret_pos = 0;
 }
 
 static void console_addchar(size_t pos, char chr) {
@@ -92,6 +101,19 @@ bool console_on_event(ALLEGRO_EVENT *event) {
                 }
                 case ALLEGRO_KEY_END: {
                     console.caret_pos = console.buffer_len;
+                    break;
+                }
+                case ALLEGRO_KEY_ENTER: {
+                    char hostname[128];
+                    unsigned int port, max_players;
+                    if (sscanf(console.buffer, "connect %128s %u", hostname, &port) == 5) {
+                        connection_join(hostname, port);
+                    } else if (sscanf(console.buffer, "host %u %u", &port, &max_players) == 2) {
+                        connection_host(port, max_players);
+                        printf("created\n");
+                    }
+                    printf("%s\n", console.buffer);
+                    console_clear();
                     break;
                 }
             }

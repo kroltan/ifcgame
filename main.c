@@ -14,6 +14,7 @@
 #include "console.h"
 #include "graphics.h"
 #include "game_state.h"
+#include "connection.h"
 #include "entities/configurable_entity.h"
 
 #include "physics_debug.h"
