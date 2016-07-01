@@ -7,6 +7,8 @@
 #include <allegro5/allegro_font.h>
 #include <chipmunk/chipmunk.h>
 
+#include <stdbool.h>
+
 typedef struct {
     ALLEGRO_DISPLAY *display;
     ALLEGRO_TIMER *main_timer;
@@ -14,6 +16,7 @@ typedef struct {
     cpSpace *space;
     ALLEGRO_CONFIG *config;
     ALLEGRO_FONT *default_font;
+    bool running;
     float last_frame, delta_time;
 } GameState;
 

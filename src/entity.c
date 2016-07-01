@@ -3,29 +3,42 @@
 #include "game_state.h"
 #include "entity_types.gen.h"
 
+#include "list.h"
+
 #include <allegro5/allegro.h>
 
 #include <stdint.h>
 #include <stdbool.h>
 
 static const uint32_t Entity_TAG = AL_ID('e', 'n', 't', 'y');
-size_t id_counter = 0;
+
+List *id_to_entity;
 
 struct Entity {
     uint32_t TAG;
-    size_t id;
+    uint32_t id;
     bool keep, dirty;
     const EntityType *type;
     cpBody *body;
     void *data;
 };
 
+void entity_each(void (*iter)(Entity *, void *), void *argument) {
+    const size_t length = list_length(id_to_entity);
+    for (size_t i = 0; i < length; ++i) {
+        iter(list_nth(id_to_entity, i), argument);
+    }
+}
+
 Entity *entity_new(const EntityType *type) {
+    if (!id_to_entity) {
+        id_to_entity = list_new();
+    }
     cpBody *body = cpBodyNew(0, 0);
 
     Entity *ent = malloc(sizeof(Entity));
     ent->TAG = Entity_TAG;
-    ent->id = id_counter;
+    ent->id = list_push(id_to_entity, ent);
     ent->type = type;
     ent->body = body;
     ent->data = type->data_size
@@ -34,8 +47,6 @@ Entity *entity_new(const EntityType *type) {
 
     cpBodySetUserData(body, ent);
     cpSpaceAddBody(game.space, body);
-
-    id_counter++;
 
     entity_cb cb = ent->type->on_init;
     if (cb) cb(ent);
@@ -72,7 +83,7 @@ void entity_do_event(Entity *ent, ALLEGRO_EVENT *event) {
     if (cb) cb(ent, event);
 }
 
-size_t entity_id(const Entity *ent) {
+uint32_t entity_id(const Entity *ent) {
     return ent->id;
 }
 

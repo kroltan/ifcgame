@@ -22,13 +22,15 @@ typedef struct {
     entity_event_cb on_event;
 } EntityType;
 
+void entity_each(void (*iter)(Entity *, void *), void *argument);
+
 Entity *entity_new(const EntityType *type);
 void entity_destroy(Entity *ent);
 void entity_update(Entity *ent);
 void entity_draw(Entity *ent);
 void entity_gui(Entity *ent);
 void entity_do_event(Entity *ent, ALLEGRO_EVENT *event);
-size_t entity_id(const Entity *ent);
+uint32_t entity_id(const Entity *ent);
 cpBody *entity_body(const Entity *ent);
 bool entity_flag_dirty(Entity *ent, bool dirty);
 void *entity_data(const Entity *ent);

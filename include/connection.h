@@ -14,6 +14,4 @@ bool connection_is_host();
 bool connection_host(uint16_t port, size_t max_players);
 bool connection_join(const char *hostname, uint16_t port);
 
-void connection_update();
-
 #endif // CONNECTION_H

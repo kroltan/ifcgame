@@ -1,3 +1,12 @@
+#include "scene.h"
+#include "config.h"
+#include "entity.h"
+#include "console.h"
+#include "graphics.h"
+#include "game_state.h"
+#include "connection.h"
+#include "entities/configurable_entity.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -7,15 +16,6 @@
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro_primitives.h>
-
-#include "scene.h"
-#include "config.h"
-#include "entity.h"
-#include "console.h"
-#include "graphics.h"
-#include "game_state.h"
-#include "connection.h"
-#include "entities/configurable_entity.h"
 
 #include "physics_debug.h"
 
@@ -35,6 +35,7 @@ void init_config() {
 }
 
 void init_core() {
+    game.running = true;
     ALLEGRO_PATH *font_path = game_asset_path("Ubuntu.ttf");
 	game.default_font = al_load_font(al_path_cstr(font_path, ALLEGRO_NATIVE_PATH_SEP), -32, 0);
 	al_destroy_path(font_path);
@@ -97,40 +98,31 @@ void game_init() {
     init_configurable_entities();
 }
 
-void _handle_event(cpBody *body, void *event) {
-    Entity *ent = cpBodyGetUserData(body);
-    if (entity_valid(ent)) {
-        entity_do_event(ent, (ALLEGRO_EVENT *) event);
-    }
+void _handle_event(Entity *ent, void *event) {
+    entity_do_event(ent, (ALLEGRO_EVENT *) event);
 }
 
-void _update_single_entity(cpBody *body, void *data) {
+void _update_single_entity(Entity *ent, void *data) {
     (void) data;
 
-    Entity *ent = cpBodyGetUserData(body);
-    if (entity_valid(ent)) {
-        coords_use_local(ent);
+    coords_use_local(ent);
 
-        entity_update(ent);
-        entity_draw(ent);
-    }
+    entity_update(ent);
+    entity_draw(ent);
 }
 
-void _gui_single_entity(cpBody *body, void *data) {
+void _gui_single_entity(Entity *ent, void *data) {
     (void) data;
 
-    Entity *ent = cpBodyGetUserData(body);
-    if (entity_valid(ent)) {
-        entity_gui(ent);
-    }
+    entity_gui(ent);
 }
 
-bool game_loop() {
+void game_loop() {
     ALLEGRO_EVENT event;
     al_wait_for_event(game.event_queue, &event);
 
     if (console_on_event(&event)) {
-        cpSpaceEachBody(game.space, _handle_event, &event);
+        entity_each(_handle_event, &event);
     }
 
 
@@ -150,7 +142,7 @@ bool game_loop() {
         #ifdef PHYSICS_DRAW_DEBUG
         cpSpaceDebugDraw(game.space, &physics_debug);
         #endif // PHYSICS_DRAW_DEBUG
-        cpSpaceEachBody(game.space, _update_single_entity, NULL);
+        entity_each(_update_single_entity, NULL);
 
         al_use_transform(&identity);
 
@@ -161,16 +153,13 @@ bool game_loop() {
         int half_height = al_get_display_height(game.display) / 2;
         camera_set(half_width / 2, -half_height / 2, half_height);
 
-        cpSpaceEachBody(game.space, _gui_single_entity, NULL);
+        entity_each(_gui_single_entity, NULL);
         console_draw();
 
         al_use_projection_transform(&backup);
 
         al_flip_display();
     }
-
-
-    return true;
 }
 
 void game_shutdown() {
@@ -184,7 +173,7 @@ int main() {
     game_init();
     scene_load("test");
 
-    while (game_loop());
+    while (game.running) game_loop();
 
     game_shutdown();
 

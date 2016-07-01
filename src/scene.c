@@ -3,7 +3,9 @@
 #include <chipmunk/chipmunk.h>
 
 #include "game_state.h"
+#include "entity.h"
 #include "config.h"
+#include "list.h"
 #include "entities/configurable_entity.h"
 
 ALLEGRO_PATH *get_scene_path(const char *filename) {
