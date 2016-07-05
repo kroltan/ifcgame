@@ -2,7 +2,7 @@
 #define LIST_H
 
 #include <stdlib.h>
-
+#include <stdbool.h>
 
 typedef struct List List;
 
@@ -24,7 +24,7 @@ void list_destroy(List *list);
  * Returns the length of a list (number of items contained in it).
  * @return The list length.
  */
-size_t list_length(List *list);
+size_t list_length(const List *list);
 
 /**
  * \brief Gets the value at the nth index of the list.
@@ -33,7 +33,15 @@ size_t list_length(List *list);
  * @param index Index of the item in the list.
  * @return The item at the given position in the list.
  */
-void *list_nth(List *list, size_t index);
+void *list_nth(const List *list, size_t index);
+
+/**
+ * \brief Returns the position of `value` in the list.
+ * @param value Value to find.
+ * @param out_i Destination of the index, or NULL if not needed.
+ * @return Whether the value is in the list or not.
+ */
+bool list_index_of(const List *list,  const void *value, size_t *out_i);
 
 /**
  * \brief Sets the value at the given index.

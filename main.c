@@ -132,6 +132,7 @@ void game_loop() {
 
     if (event.type == ALLEGRO_EVENT_TIMER && event.timer.source == game.main_timer) {
         cpSpaceStep(game.space, 0.016);
+        connection_update();
 
         ALLEGRO_TRANSFORM identity;
         al_identity_transform(&identity);

@@ -40,13 +40,26 @@ void list_destroy(List *list) {
 	free(list);
 }
 
-size_t list_length(List *list) {
+size_t list_length(const List *list) {
 	return list->length;
 }
 
-void *list_nth(List *list, size_t index) {
+void *list_nth(const List *list, size_t index) {
     if (index >= list->length) return NULL;
 	return list->data[index];
+}
+
+bool list_index_of(const List *list, const void *value, size_t *out_i) {
+    const size_t length = list->length;
+    for (size_t i = 0; i < length; ++i) {
+        if (list->data[i] == value) {
+            if (out_i) {
+                *out_i = i;
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
 void list_set(List *list, size_t index, void *item) {
