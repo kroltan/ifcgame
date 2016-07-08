@@ -30,13 +30,8 @@ bool scene_load(const char *filename) {
     return status;
 }
 
-void _delete_free_ents(cpBody *body, void *data) {
+void _delete_free_ents(Entity *ent, void *data) {
     (void) data;
-
-    if (!entity_valid(cpBodyGetUserData(body))) {
-        return;
-    }
-    Entity *ent = cpBodyGetUserData(body);
     if (!entity_get_keep(ent)) {
         entity_destroy(ent);
     }
@@ -67,7 +62,7 @@ bool scene_loadf(ALLEGRO_FILE *fp) {
     ALLEGRO_CONFIG *scene = al_load_config_file_f(fp);
     if (!scene) return false;
 
-    cpSpaceEachBody(game.space, _delete_free_ents, NULL);
+    entity_each(_delete_free_ents, NULL);
     config_each_entry(scene, "Scene", _ent_loader);
 
     return true;

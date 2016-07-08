@@ -16,16 +16,17 @@ ENetPeer *server;
 size_t refresh_counter = 0;
 ALLEGRO_EVENT_SOURCE event_source;
 
-ALLEGRO_EVENT_SOURCE *connection_init() {
+bool init_connection() {
     int ret = enet_initialize();
     peers = list_new();
     if (!ret) {
         atexit(enet_deinitialize);
         al_init_user_event_source(&event_source);
-        return &event_source;
+        al_register_event_source(game.event_queue, &event_source);
+        return true;
     }
 
-    return NULL;
+    return false;
 }
 
 static inline void destroy_host() {
@@ -70,7 +71,19 @@ bool connection_join(const char *hostname, uint16_t port) {
     return host != NULL;
 }
 
+void broadcast_except(ENetPeer *peer, ENetPacket *packet, enet_uint8 channel_id) {
+    const size_t length = list_length(peers);
+    for (size_t i = 0; i < length; ++i) {
+        if (list_nth(peers, i) == peer) {
+            continue;
+        }
+        enet_peer_send(list_nth(peers, i), channel_id, packet);
+    }
+}
+
 void connection_update() {
+    if (!host) return;
+
     ENetEvent ev;
     while (enet_host_service(host, &ev, 0)) {
         switch (ev.type) {
@@ -86,6 +99,14 @@ void connection_update() {
                     list_remove(peers, i);
                 }
             }
+            break;
+        case ENET_EVENT_TYPE_RECEIVE:
+            if (connection_is_host()) {
+                broadcast_except(ev.peer, ev.packet, ev.channelID);
+            }
+            break;
+        case ENET_EVENT_TYPE_NONE:
+            break;
         }
     }
 }

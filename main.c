@@ -82,6 +82,7 @@ void game_init() {
 
     init_config();
     init_core();
+    init_connection();
 
 	game.space = cpSpaceNew();
 	cpSpaceSetGravity(game.space, cpv(0, -1));
@@ -172,7 +173,7 @@ void game_shutdown() {
 
 int main() {
     game_init();
-    scene_load("test");
+    //scene_load("test");
 
     while (game.running) game_loop();
 

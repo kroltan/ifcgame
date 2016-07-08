@@ -1,9 +1,9 @@
 #include "console.h"
 
 #include "game_state.h"
-#include "graphics.h"
-
 #include "connection.h"
+#include "graphics.h"
+#include "scene.h"
 
 #include <allegro5/allegro_primitives.h>
 
@@ -105,14 +105,15 @@ bool console_on_event(ALLEGRO_EVENT *event) {
                 }
                 case ALLEGRO_KEY_ENTER: {
                     char hostname[128];
+                    char map[64];
                     unsigned int port, max_players;
-                    if (sscanf(console.buffer, "connect %128s %u", hostname, &port) == 5) {
+                    if (sscanf(console.buffer, "connect %128s %u", hostname, &port) == 2) {
                         connection_join(hostname, port);
                     } else if (sscanf(console.buffer, "host %u %u", &port, &max_players) == 2) {
                         connection_host(port, max_players);
-                        printf("created\n");
+                    } else if (sscanf(console.buffer, "map %64s", map) == 1) {
+                        scene_load(map);
                     }
-                    printf("%s\n", console.buffer);
                     console_clear();
                     break;
                 }

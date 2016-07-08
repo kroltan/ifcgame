@@ -24,6 +24,8 @@ struct Entity {
 };
 
 void entity_each(void (*iter)(Entity *, void *), void *argument) {
+    if (!id_to_entity) return;
+
     const size_t length = list_length(id_to_entity);
     for (size_t i = 0; i < length; ++i) {
         iter(list_nth(id_to_entity, i), argument);
@@ -34,19 +36,18 @@ Entity *entity_new(const EntityType *type) {
     if (!id_to_entity) {
         id_to_entity = list_new();
     }
-    cpBody *body = cpBodyNew(0, 0);
 
     Entity *ent = malloc(sizeof(Entity));
     ent->TAG = Entity_TAG;
     ent->id = list_push(id_to_entity, ent);
     ent->type = type;
-    ent->body = body;
+    ent->body = cpBodyNew(0, 0);
     ent->data = type->data_size
                 ? malloc(type->data_size)
                 : NULL;
 
-    cpBodySetUserData(body, ent);
-    cpSpaceAddBody(game.space, body);
+    cpBodySetUserData(ent->body, ent);
+    cpSpaceAddBody(game.space, ent->body);
 
     entity_cb cb = ent->type->on_init;
     if (cb) cb(ent);
