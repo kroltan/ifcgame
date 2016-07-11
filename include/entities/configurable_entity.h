@@ -3,6 +3,7 @@
 
 #include "entity.h"
 
+extern const int CONFIGURABLE_ENTITY_PACKET;
 extern const EntityType ConfigurableEntity;
 
 Entity *entity_instantiate(const char *definition);

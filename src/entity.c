@@ -56,17 +56,16 @@ Entity *entity_from_id(uint32_t id) {
     return NULL;
 }
 
-
-#include <stdio.h>
 Entity *_entity_new(const EntityType *type, bool broadcast, uint32_t id) {
     if (!all_entities) {
         all_entities = list_new();
     }
 
+    printf("%u\n", id);
+
     if (broadcast) {
         uint8_t operation = EPACKET_NEW;
         char message[sizeof(operation) + sizeof(id) + MAX_TYPE_NAME_LENGTH];
-        printf("%s\n", type->name);
         pack_format(message, "bu s", operation, id, type->name);
         connection_send_raw(0, message, sizeof(message));
     }
@@ -74,11 +73,15 @@ Entity *_entity_new(const EntityType *type, bool broadcast, uint32_t id) {
     Entity *ent = malloc(sizeof(Entity));
     ent->TAG = Entity_TAG;
     ent->id = id;
+    ent->dirty = false;
     ent->type = type;
     ent->body = cpBodyNew(0, 0);
     ent->data = type->data_size
                 ? malloc(type->data_size)
                 : NULL;
+    if (ent->data) {
+        memset(ent->data, 0, type->data_size);
+    }
 
     cpBodySetUserData(ent->body, ent);
     cpSpaceAddBody(game.space, ent->body);
@@ -96,7 +99,7 @@ Entity *entity_new(const EntityType *type) {
         const Entity *last_ent = list_nth(
             all_entities, list_length(all_entities) - 1
         );
-        id = last_ent->id;
+        id = last_ent->id + rand() % 10;
     }
     return _entity_new(type, true, id);
 }
@@ -149,6 +152,8 @@ void entity_update(Entity *ent) {
             angle, angularVelocity
         );
         connection_send_raw(0, params, sizeof(params));
+
+        ent->dirty = false;
     }
 }
 
@@ -207,6 +212,7 @@ const EntityType *entity_type_from_name(const char *ent_type_name) {
     return NULL;
 }
 
+#include <stdio.h>
 void entity_sync(const char *data) {
     uint8_t operation;
     uint32_t id;

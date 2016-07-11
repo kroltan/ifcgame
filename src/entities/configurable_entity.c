@@ -1,9 +1,11 @@
 #include "entities/configurable_entity.h"
 
 #include "game_state.h"
+#include "connection.h"
 #include "graphics.h"
 #include "hashmap.h"
 #include "config.h"
+#include "pack.h"
 #include "list.h"
 
 #include <allegro5/allegro.h>
@@ -16,24 +18,62 @@
 #include <string.h>
 #include <math.h>
 
+const int CONFIGURABLE_ENTITY_PACKET = 0x90;
+
 typedef struct {
+    bool initialized;
     ALLEGRO_BITMAP *sprite;
     float sprite_scale;
     cpVect sprite_offset;
 } ConfigurableEntityData;
 
+
+void configurable_init(Entity *ent) {
+    ConfigurableEntityData *data = entity_data(ent);
+    data->initialized = false;
+}
+
 void configurable_draw(Entity *ent) {
     ConfigurableEntityData *data = entity_data(ent);
+    if (!data->initialized) return;
 
     if (data->sprite) {
         draw_sprite(data->sprite, 0, 0, data->sprite_scale);
     }
 }
 
+void configurable_event(Entity *ent, ALLEGRO_EVENT *ev) {
+    if (ev->type == CONNECTION_EVENT_ID && ev->user.data1 == CONFIGURABLE_ENTITY_PACKET) {
+        uint32_t eid;
+        char bitmap_name[256];
+        cpVect offset;
+        float scale;
+
+        unpack_format((const char *)ev->user.data2,
+            "u s f ff", &eid,
+            bitmap_name, &scale,
+            &offset.x, &offset.y
+        );
+        if (eid == entity_id(ent)) {
+            ConfigurableEntityData *data = entity_data(ent);
+
+            ALLEGRO_PATH *path = game_asset_path(bitmap_name);
+            data->sprite = al_load_bitmap(al_path_cstr(path, ALLEGRO_NATIVE_PATH_SEP));
+            al_destroy_path(path);
+
+            data->sprite_offset = offset;
+            data->sprite_scale = scale;
+            data->initialized = true;
+        }
+    }
+}
+
 const EntityType ConfigurableEntity = {
     .name = "ConfigurableEntity",
     .data_size = sizeof(ConfigurableEntityData),
-    .on_draw = configurable_draw
+    .on_init = configurable_init,
+    .on_draw = configurable_draw,
+    .on_event = configurable_event
 };
 
 #define POLY_MAX_POINTS 256
@@ -75,6 +115,7 @@ typedef struct {
 typedef struct {
     cpVect offset;
     float scale;
+    char bitmap_name[256];
     ALLEGRO_BITMAP *bitmap;
 } CEVisual;
 
@@ -96,6 +137,16 @@ Entity *entity_instantiate(const char *definition) {
         data->sprite = desc->visual.bitmap;
         data->sprite_offset = desc->visual.offset;
         data->sprite_scale = desc->visual.scale;
+        data->initialized = true;
+
+        uint32_t eid = entity_id(ent);
+        char packet[sizeof(eid) + 256 + 3 * sizeof(float)];
+        pack_format(
+            packet, "u s f ff", &eid,
+            desc->visual.bitmap_name, data->sprite_scale,
+            data->sprite_offset.x, data->sprite_offset.y
+        );
+        connection_send(CONFIGURABLE_ENTITY_PACKET, 1, packet, sizeof(packet));
 
         cpBody *body = entity_body(ent);
         cpBodySetMass(body, desc->physics.mass);
