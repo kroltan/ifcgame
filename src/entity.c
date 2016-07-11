@@ -1,9 +1,12 @@
 #include "entity.h"
 
 #include "game_state.h"
+#include "connection.h"
+#include "pack.h"
+#include "list.h"
+
 #include "entity_types.gen.h"
 
-#include "list.h"
 
 #include <allegro5/allegro.h>
 
@@ -11,8 +14,9 @@
 #include <stdbool.h>
 
 static const uint32_t Entity_TAG = AL_ID('e', 'n', 't', 'y');
+static const size_t MAX_TYPE_NAME_LENGTH = 128;
 
-List *id_to_entity;
+List *all_entities; /**< item=Entity */
 
 struct Entity {
     uint32_t TAG;
@@ -23,23 +27,53 @@ struct Entity {
     void *data;
 };
 
-void entity_each(void (*iter)(Entity *, void *), void *argument) {
-    if (!id_to_entity) return;
+typedef enum {
+    EPACKET_NEW     = 0,
+    EPACKET_DESTROY = 1,
+    EPACKET_UPDATE  = 2
+} EntityPacketOperation;
 
-    const size_t length = list_length(id_to_entity);
-    for (size_t i = 0; i < length; ++i) {
-        iter(list_nth(id_to_entity, i), argument);
+void entity_each(void (*iter)(Entity *, void *), void *argument) {
+    if (!all_entities) return;
+
+    const size_t last_index = list_length(all_entities) - 1;
+    for (size_t i = 0; i <= last_index; ++i) {
+        // reverse iteration so `iter` can safely destroy the current entity
+        iter(list_nth(all_entities, last_index - i), argument);
     }
 }
 
-Entity *entity_new(const EntityType *type) {
-    if (!id_to_entity) {
-        id_to_entity = list_new();
+Entity *entity_from_id(uint32_t id) {
+    if (!all_entities) return NULL;
+
+    size_t length = list_length(all_entities);
+    for (size_t i = 0; i < length; ++i) {
+        Entity *ent = list_nth(all_entities, i);
+        if (ent->id == id) {
+            return ent;
+        }
+    }
+    return NULL;
+}
+
+
+#include <stdio.h>
+Entity *_entity_new(const EntityType *type, bool broadcast, uint32_t id) {
+    if (!all_entities) {
+        all_entities = list_new();
+    }
+
+    if (broadcast) {
+        uint8_t operation = EPACKET_NEW;
+        char message[sizeof(operation) + sizeof(id) + MAX_TYPE_NAME_LENGTH];
+        printf("%s\n", type->name);
+        pack_format(message, "bu s", operation, id, type->name);
+        connection_send_raw(0, message, sizeof(message));
     }
 
     Entity *ent = malloc(sizeof(Entity));
     ent->TAG = Entity_TAG;
-    ent->id = list_push(id_to_entity, ent);
+    ent->id = id;
     ent->type = type;
     ent->body = cpBodyNew(0, 0);
     ent->data = type->data_size
@@ -49,24 +83,73 @@ Entity *entity_new(const EntityType *type) {
     cpBodySetUserData(ent->body, ent);
     cpSpaceAddBody(game.space, ent->body);
 
+    list_push(all_entities, ent);
+
     entity_cb cb = ent->type->on_init;
     if (cb) cb(ent);
 
     return ent;
 }
+Entity *entity_new(const EntityType *type) {
+    uint32_t id = 0;
+    if (all_entities && list_length(all_entities)) {
+        const Entity *last_ent = list_nth(
+            all_entities, list_length(all_entities) - 1
+        );
+        id = last_ent->id;
+    }
+    return _entity_new(type, true, id);
+}
 
+void _delete_shapes(cpBody *body, cpShape *shape, void *data) {
+    (void) data;
+    cpSpaceRemoveShape(cpBodyGetSpace(body), shape);
+    cpShapeDestroy(shape);
+}
+void _delete_constraints(cpBody *body, cpConstraint *constraint, void *data) {
+    (void) data;
+    cpSpaceRemoveConstraint(cpBodyGetSpace(body), constraint);
+    cpConstraintDestroy(constraint);
+}
 void entity_destroy(Entity *ent) {
     entity_cb cb = ent->type->on_destroy;
     if (cb) cb(ent);
 
+    size_t index;
+    if (list_index_of(all_entities, ent, &index)) {
+        list_remove(all_entities, index);
+    }
+    ent->TAG = 0;
+    cpBodyEachShape(ent->body, _delete_shapes, NULL);
+    cpBodyEachConstraint(ent->body, _delete_constraints, NULL);
     cpSpaceRemoveBody(game.space, ent->body);
-    cpBodyFree(ent->body);
+    cpBodyDestroy(ent->body);
+    free(ent->data);
     free(ent);
 }
 
 void entity_update(Entity *ent) {
     entity_cb cb = ent->type->on_update;
     if (cb) cb(ent);
+
+    if (ent->dirty) {
+        cpBody *body = ent->body;
+        cpVect position = cpBodyGetPosition(body);
+        cpVect velocity = cpBodyGetVelocity(body);
+        float angle = cpBodyGetAngle(body);
+        float angularVelocity = cpBodyGetAngularVelocity(body);
+
+        uint8_t operation = EPACKET_UPDATE;
+        char params[sizeof(operation) + sizeof(ent->id) + 6 * sizeof(float)];
+        pack_format(
+            params, "bu ff ff f f",
+            operation, ent->id,
+            position.x, position.y,
+            velocity.x, velocity.y,
+            angle, angularVelocity
+        );
+        connection_send_raw(0, params, sizeof(params));
+    }
 }
 
 void entity_draw(Entity *ent) {
@@ -122,4 +205,44 @@ const EntityType *entity_type_from_name(const char *ent_type_name) {
         }
     }
     return NULL;
+}
+
+void entity_sync(const char *data) {
+    uint8_t operation;
+    uint32_t id;
+    unpack_format(data, "bu", &operation, &id);
+    const char *params = data + sizeof(operation) + sizeof(id);
+
+    switch (operation) {
+        case EPACKET_NEW: {
+            char type_name[MAX_TYPE_NAME_LENGTH];
+            unpack_format(params, "s", type_name);
+            _entity_new(entity_type_from_name(type_name), false, id);
+            break;
+        }
+        case EPACKET_DESTROY: {
+            Entity *ent = entity_from_id(id);
+            if (ent) entity_destroy(ent);
+            break;
+        }
+        case EPACKET_UPDATE: {
+            Entity *ent = entity_from_id(id);
+            if (!ent) break;
+
+            cpVect position, velocity;
+            float angle, angularVelocity;
+            unpack_format(
+                params, "ff ff f f",
+                &position.x, &position.y,
+                &velocity.x, &velocity.y,
+                &angle, &angularVelocity
+            );
+            cpBody *body = ent->body;
+            cpBodySetPosition(body, position);
+            cpBodySetVelocity(body, velocity);
+            cpBodySetAngle(body, angle);
+            cpBodySetAngularVelocity(body, angularVelocity);
+            break;
+        }
+    }
 }

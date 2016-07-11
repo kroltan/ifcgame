@@ -22,7 +22,7 @@ typedef struct {
     cpVect sprite_offset;
 } ConfigurableEntityData;
 
-void draw(Entity *ent) {
+void configurable_draw(Entity *ent) {
     ConfigurableEntityData *data = entity_data(ent);
 
     if (data->sprite) {
@@ -33,7 +33,7 @@ void draw(Entity *ent) {
 const EntityType ConfigurableEntity = {
     .name = "ConfigurableEntity",
     .data_size = sizeof(ConfigurableEntityData),
-    .on_draw = draw
+    .on_draw = configurable_draw
 };
 
 #define POLY_MAX_POINTS 256

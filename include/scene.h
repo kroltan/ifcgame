@@ -7,7 +7,6 @@
 #include <stdio.h>
 
 bool scene_load(const char *filename);
-bool scene_loadf(ALLEGRO_FILE *fp);
 
 bool scene_save(const char *filename);
 bool scene_savef(ALLEGRO_FILE *fp);

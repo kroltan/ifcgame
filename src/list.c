@@ -95,6 +95,7 @@ void *list_remove(List *list, size_t index) {
 	void *item = *dest;
 
 	memmove(dest, src, length_bytes);
+	list->length--;
 
 	return item;
 }

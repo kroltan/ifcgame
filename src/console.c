@@ -107,7 +107,7 @@ bool console_on_event(ALLEGRO_EVENT *event) {
                     char hostname[128];
                     char map[64];
                     unsigned int port, max_players;
-                    if (sscanf(console.buffer, "connect %128s %u", hostname, &port) == 2) {
+                    if (sscanf(console.buffer, "join %128s %u", hostname, &port) == 2) {
                         connection_join(hostname, port);
                     } else if (sscanf(console.buffer, "host %u %u", &port, &max_players) == 2) {
                         connection_host(port, max_players);

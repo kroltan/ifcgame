@@ -47,10 +47,11 @@ void pack_format(char dest[], const char *format, ...) {
             case 'u':
             case 'd':
                 bytes.u32 = va_arg(arguments, uint32_t);
-                memcpy(dest + dest_i, bytes.u8, 4);
-                dest_i += 4;
+                memcpy(dest + dest_i, bytes.u8, sizeof(bytes.u32));
+                dest_i += sizeof(bytes.u32);
                 break;
             case 'c':
+            case 'b':
                 //va_list char is promoted to int, so use int in va_arg
                 dest[dest_i] = va_arg(arguments, int);
                 dest_i++;
@@ -58,15 +59,32 @@ void pack_format(char dest[], const char *format, ...) {
             case 'f':
                 //va_list float is promoted to double, so use double in va_arg
                 bytes.f32 = va_arg(arguments, double);
-                dest_i += 4;
+                dest_i += sizeof(bytes.f32);
                 break;
+            case 's': {
+                const char *const str = va_arg(arguments, const char *);
+                const size_t length = strlen(str);
+                strcpy(dest + dest_i, str);
+                dest_i += length + 1;
+                break;
+            }
+            case 'a': {
+                const char *const arr = va_arg(arguments, const char *);
+                const uint32_t length = va_arg(arguments, uint32_t);
+                bytes.u32 = length;
+                memcpy(dest + dest_i, bytes.u8, length);
+                dest_i += sizeof(bytes.u32);
+                memcpy(dest + dest_i, arr, length);
+                dest_i += length;
+                break;
+            }
             default: break;
         }
     }
     va_end(arguments);
 }
 
-void unpack_format(char source[], const char *format, ...) {
+void unpack_format(const char source[], const char *format, ...) {
     size_t source_i = 0;
 
     va_list arguments;
@@ -78,28 +96,47 @@ void unpack_format(char source[], const char *format, ...) {
                 uint32_t *u32 = va_arg(arguments, uint32_t*);
                 memcpy(bytes.u8, source + source_i, 4);
                 *u32 = bytes.u32;
-                source_i += 4;
+                source_i += sizeof(*u32);
                 break;
             }
             case 'd': {
                 int32_t *i32 = va_arg(arguments, int32_t*);
                 memcpy(bytes.u8, source + source_i, 4);
                 *i32 = bytes.i32;
-                source_i += 4;
+                source_i += sizeof(*i32);
                 break;
             }
             case 'c':
             case 'b': {
                 char *chr = va_arg(arguments, char*);
                 *chr = source[source_i];
-                source_i++;
+                source_i += sizeof(*chr);
                 break;
             }
             case 'f': {
                 float *f32 = va_arg(arguments, float*);
                 memcpy(bytes.u8, source + source_i, 4);
                 *f32 = bytes.f32;
-                source_i += 4;
+                source_i += sizeof(*f32);
+                break;
+            }
+            case 's': {
+                char *str = va_arg(arguments, char *);
+                strcpy(str, source + source_i);
+                source_i += strlen(source + source_i) + 1;
+                break;
+            }
+            case 'a': {
+                char **const arr = va_arg(arguments, char **);
+                size_t *length = va_arg(arguments, size_t *);
+                memcpy(bytes.u8, source + source_i, sizeof(bytes.u8));
+                source_i += sizeof(bytes.u8);
+
+                char *buffer = malloc(bytes.u32);
+                memcpy(buffer, source + source_i, bytes.u32);
+                *length = bytes.u32;
+                *arr = buffer;
+                source_i += *length;
                 break;
             }
             default: break;

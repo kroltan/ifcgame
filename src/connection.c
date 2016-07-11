@@ -8,7 +8,9 @@
 #include <enet/enet.h>
 #include <allegro5/allegro.h>
 
-static const size_t CHANNEL_COUNT = 1;
+static const size_t CHANNEL_COUNT = 2;
+
+const unsigned int CONNECTION_EVENT_ID = 513;
 
 List *peers;
 ENetHost *host;
@@ -102,11 +104,47 @@ void connection_update() {
             break;
         case ENET_EVENT_TYPE_RECEIVE:
             if (connection_is_host()) {
+                if (ev.channelID > 0) {
+                    uint32_t id;
+                    char *data = NULL;
+                    size_t data_len;
+                    unpack_format((char *)ev.packet->data, "ua", &id, &data, &data_len);
+
+                    ALLEGRO_EVENT event;
+                    event.type = CONNECTION_EVENT_ID;
+                    event.user.data1 = id;
+                    event.user.data2 = (intptr_t)data;
+                    al_emit_user_event(&event_source, &event, NULL);
+                } else {
+                    //channel 0 is entity update
+                    entity_sync((const char *)ev.packet->data);
+                }
+
                 broadcast_except(ev.peer, ev.packet, ev.channelID);
             }
             break;
         case ENET_EVENT_TYPE_NONE:
             break;
         }
+    }
+}
+
+void connection_send_raw(uint8_t channel, const char *data, size_t size) {
+    ENetPacket *packet = enet_packet_create(data, size, 0);
+    if (connection_is_host()) {
+        broadcast_except(NULL, packet, channel);
+    } else if (server) {
+        enet_peer_send(server, channel, packet);
+    }
+}
+
+void connection_send(uint32_t id, uint8_t channel, const char *data, size_t size) {
+    ENetPacket *packet = enet_packet_create(NULL, 0, 0);
+    enet_packet_resize(packet, sizeof(id) + sizeof(uint32_t) + size);
+    pack_format((char *)packet->data, "ua", id, data, size);
+    if (connection_is_host()) {
+        broadcast_except(NULL, packet, channel);
+    } else if (server) {
+        enet_peer_send(server, channel, packet);
     }
 }

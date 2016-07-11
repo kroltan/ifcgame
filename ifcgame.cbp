@@ -15,10 +15,12 @@
 					<Add option="-g" />
 					<Add option="-DPHYSICS_DRAW_DEBUG" />
 					<Add directory="include" />
+					<Add directory="include/packets" />
+					<Add directory="include/entities" />
 				</Compiler>
 				<ExtraCommands>
 					<Add before="bash $(PROJECT_DIR)build/*.sh" />
-					<Add before="python3 $(PROJECT_DIR)build/*.py" />
+					<Add before="#python3 $(PROJECT_DIR)build/*.py" />
 					<Mode after="always" />
 				</ExtraCommands>
 			</Target>
@@ -31,6 +33,7 @@
 					<Add option="-O2" />
 					<Add directory="include" />
 					<Add directory="include/entities" />
+					<Add directory="include/packets" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
@@ -62,6 +65,7 @@
 		<Unit filename="include/connection.h" />
 		<Unit filename="include/console.h" />
 		<Unit filename="include/entities/configurable_entity.h" />
+		<Unit filename="include/entities/player_entity.h" />
 		<Unit filename="include/entity.h" />
 		<Unit filename="include/entity_types.gen.h" />
 		<Unit filename="include/game_state.h" />
@@ -84,6 +88,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/entities/configurable_entity.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/entities/player_entity.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/entity.c">

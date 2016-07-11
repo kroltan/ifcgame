@@ -3,10 +3,13 @@
 #include <chipmunk/chipmunk.h>
 
 #include "game_state.h"
+#include "connection.h"
 #include "entity.h"
 #include "config.h"
 #include "list.h"
 #include "entities/configurable_entity.h"
+
+#include <string.h>
 
 ALLEGRO_PATH *get_scene_path(const char *filename) {
     ALLEGRO_PATH *path = al_get_standard_path(ALLEGRO_RESOURCES_PATH);
@@ -17,21 +20,10 @@ ALLEGRO_PATH *get_scene_path(const char *filename) {
     return path;
 }
 
-bool scene_load(const char *filename) {
-    ALLEGRO_PATH *path = get_scene_path(filename);
-    ALLEGRO_FILE *fp = al_fopen(al_path_cstr(path, ALLEGRO_NATIVE_PATH_SEP), "r");
-    al_destroy_path(path);
-
-    if (!fp) return false;
-
-    bool status = scene_loadf(fp);
-    al_fclose(fp);
-
-    return status;
-}
 
 void _delete_free_ents(Entity *ent, void *data) {
     (void) data;
+
     if (!entity_get_keep(ent)) {
         entity_destroy(ent);
     }
@@ -58,13 +50,20 @@ bool _ent_loader(ALLEGRO_CONFIG *scene, const char *section, const char *key) {
 
     return true;
 }
-bool scene_loadf(ALLEGRO_FILE *fp) {
+
+bool scene_load(const char *filename) {
+    ALLEGRO_PATH *path = get_scene_path(filename);
+    ALLEGRO_FILE *fp = al_fopen(al_path_cstr(path, ALLEGRO_NATIVE_PATH_SEP), "r");
+    al_destroy_path(path);
+    if (!fp) return false;
+
     ALLEGRO_CONFIG *scene = al_load_config_file_f(fp);
     if (!scene) return false;
 
     entity_each(_delete_free_ents, NULL);
     config_each_entry(scene, "Scene", _ent_loader);
 
+    al_fclose(fp);
     return true;
 }
 

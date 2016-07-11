@@ -172,6 +172,7 @@ void game_shutdown() {
 }
 
 int main() {
+    srand(time(NULL));
     game_init();
     //scene_load("test");
 
