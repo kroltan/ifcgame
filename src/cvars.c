@@ -73,7 +73,7 @@ void cvar_on_event(ALLEGRO_EVENT *event) {
         cvar_map = hashmap_new_str_key();
     }
 
-    if (event->type == CONNECTION_RECEIVE_EVENT_ID && event->user.data1 == CVAR_CHANGE_PACKET) {
+    if (event->type == CONNECTION_RECEIVE_EVENT_ID && (uint32_t)event->user.data1 == CVAR_CHANGE_PACKET) {
         char var[MAX_CVAR_LENGTH];
         char value[MAX_CVAR_LENGTH];
         unpack_format((const char *)event->user.data2, "s s", var, value);

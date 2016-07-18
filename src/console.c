@@ -71,8 +71,23 @@ void _free_console_event(ALLEGRO_USER_EVENT *event_data) {
 }
 
 bool console_on_event(ALLEGRO_EVENT *event) {
-    if (event->type == ALLEGRO_EVENT_KEY_DOWN && event->keyboard.keycode == ALLEGRO_KEY_F1) {
-        console.open = !console.open;
+    if (event->type == ALLEGRO_EVENT_KEY_DOWN) {
+        switch (event->keyboard.keycode) {
+            case ALLEGRO_KEY_F1:
+                console.open = !console.open;
+                break;
+            case ALLEGRO_KEY_ENTER: {
+                char *command = malloc(BUFFER_SIZE);
+                memcpy(command, console.buffer, BUFFER_SIZE);
+                ALLEGRO_EVENT new_event;
+                new_event.type = CONSOLE_EVENT_ID;
+                new_event.user.data1 = (intptr_t) command;
+                al_emit_user_event(&console_event_source, &new_event, _free_console_event);
+
+                console_clear();
+                break;
+            }
+        }
     }
     if (console.open && event->type == ALLEGRO_EVENT_KEY_CHAR) {
         if (event->keyboard.unichar > 0 && event->keyboard.unichar <= 127 && isprint(event->keyboard.unichar)) {
@@ -109,17 +124,6 @@ bool console_on_event(ALLEGRO_EVENT *event) {
                 }
                 case ALLEGRO_KEY_END: {
                     console.caret_pos = console.buffer_len;
-                    break;
-                }
-                case ALLEGRO_KEY_ENTER: {
-                    char *command = malloc(BUFFER_SIZE);
-                    memcpy(command, console.buffer, BUFFER_SIZE);
-                    ALLEGRO_EVENT new_event;
-                    new_event.type = CONSOLE_EVENT_ID;
-                    new_event.user.data1 = (intptr_t) command;
-                    al_emit_user_event(&console_event_source, &new_event, _free_console_event);
-
-                    console_clear();
                     break;
                 }
             }

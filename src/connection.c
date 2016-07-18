@@ -183,7 +183,7 @@ void connection_update() {
 
 void connection_on_event(ALLEGRO_EVENT *event) {
     if (event->type == CONNECTION_RECEIVE_EVENT_ID) {
-        if (event->user.data1 == USER_ID_ASSIGN_PACKET) {
+        if ((uint32_t)event->user.data1 == USER_ID_ASSIGN_PACKET) {
             uint32_t *new_id = (uint32_t *)event->user.data2;
             user_id = *new_id;
 

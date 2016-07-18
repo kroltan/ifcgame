@@ -118,7 +118,7 @@ Entity *player_new_with_id(uint32_t user_id) {
     {
         Entity *old = player_get_for_id(user_id);
         if (entity_valid(old)) {
-            entity_destroy(old);
+            return old;
         }
     }
 
@@ -140,6 +140,9 @@ Entity *player_new_with_id(uint32_t user_id) {
 }
 
 Entity *player_get_for_id(uint32_t user_id) {
-    uint32_t ent_id = cvar_getd_player(user_id, "ent_id");
-    return entity_from_id(ent_id);
+    const char *entid_str = cvar_get_player(user_id, "ent_id");
+    if (!entid_str) {
+        return NULL;
+    }
+    return entity_from_id(atoi(entid_str));
 }
