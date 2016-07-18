@@ -1,7 +1,6 @@
 #include "console.h"
 
 #include "game_state.h"
-#include "connection.h"
 #include "graphics.h"
 #include "scene.h"
 
@@ -14,6 +13,8 @@
 
 #define BUFFER_SIZE 512
 
+const unsigned int CONSOLE_EVENT_ID = 1919191;
+
 typedef struct {
     char buffer[BUFFER_SIZE];
     size_t buffer_len;
@@ -22,12 +23,15 @@ typedef struct {
 } ConsoleState;
 
 ConsoleState console;
+ALLEGRO_EVENT_SOURCE console_event_source;
 
 void init_console() {
     memset(console.buffer, 0, BUFFER_SIZE);
     console.buffer_len = 0;
     console.caret_pos = 0;
     console.open = false;
+    al_init_user_event_source(&console_event_source);
+    al_register_event_source(game.event_queue, &console_event_source);
 }
 
 static void console_clear() {
@@ -60,6 +64,10 @@ static void console_delchar(size_t pos) {
     }
     console.buffer_len--;
     console.buffer[console.buffer_len] = '\0';
+}
+
+void _free_console_event(ALLEGRO_USER_EVENT *event_data) {
+    free((char *)event_data->data1);
 }
 
 bool console_on_event(ALLEGRO_EVENT *event) {
@@ -104,24 +112,24 @@ bool console_on_event(ALLEGRO_EVENT *event) {
                     break;
                 }
                 case ALLEGRO_KEY_ENTER: {
-                    char hostname[128];
-                    char map[64];
-                    unsigned int port, max_players;
-                    if (sscanf(console.buffer, "join %128s %u", hostname, &port) == 2) {
-                        connection_join(hostname, port);
-                    } else if (sscanf(console.buffer, "host %u %u", &port, &max_players) == 2) {
-                        connection_host(port, max_players);
-                    } else if (sscanf(console.buffer, "map %64s", map) == 1) {
-                        scene_load(map);
-                    }
+                    char *command = malloc(BUFFER_SIZE);
+                    memcpy(command, console.buffer, BUFFER_SIZE);
+                    ALLEGRO_EVENT new_event;
+                    new_event.type = CONSOLE_EVENT_ID;
+                    new_event.user.data1 = (intptr_t) command;
+                    al_emit_user_event(&console_event_source, &new_event, _free_console_event);
+
                     console_clear();
                     break;
                 }
             }
         }
     }
-
-    return !console.open;
+    return console.open && (
+        event->type == ALLEGRO_EVENT_KEY_CHAR
+        || event->type == ALLEGRO_EVENT_KEY_UP
+        || event->type == ALLEGRO_EVENT_KEY_DOWN
+    );
 }
 
 void console_draw() {

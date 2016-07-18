@@ -14,15 +14,8 @@
 				<Compiler>
 					<Add option="-g" />
 					<Add option="-DPHYSICS_DRAW_DEBUG" />
-					<Add directory="include" />
-					<Add directory="include/packets" />
 					<Add directory="include/entities" />
 				</Compiler>
-				<ExtraCommands>
-					<Add before="bash $(PROJECT_DIR)build/*.sh" />
-					<Add before="#python3 $(PROJECT_DIR)build/*.py" />
-					<Mode after="always" />
-				</ExtraCommands>
 			</Target>
 			<Target title="Release">
 				<Option output="bin/Release/ifcgame" prefix_auto="1" extension_auto="1" />
@@ -45,6 +38,7 @@
 			<Add option="-Wextra" />
 			<Add option="-Wall" />
 			<Add option="-std=c11" />
+			<Add directory="include" />
 		</Compiler>
 		<Linker>
 			<Add library="m" />
@@ -53,6 +47,7 @@
 			<Add library="allegro_monolith" />
 		</Linker>
 		<ExtraCommands>
+			<Add before='bash &quot;$(PROJECT_DIR)build.sh&quot; &quot;$(PROJECT_DIR)&quot;' />
 			<Add after='cp -r &quot;$(PROJECT_DIR)assets/&quot; &quot;$(TARGET_OUTPUT_DIR)&quot;' />
 			<Mode after="always" />
 		</ExtraCommands>
@@ -64,15 +59,21 @@
 		<Unit filename="include/config.h" />
 		<Unit filename="include/connection.h" />
 		<Unit filename="include/console.h" />
+		<Unit filename="include/cvars.h" />
 		<Unit filename="include/entities/configurable_entity.h" />
 		<Unit filename="include/entities/player_entity.h" />
+		<Unit filename="include/entities/player_spawn_entity.h" />
+		<Unit filename="include/entities/weapon_entity.h" />
 		<Unit filename="include/entity.h" />
 		<Unit filename="include/entity_types.gen.h" />
 		<Unit filename="include/game_state.h" />
 		<Unit filename="include/graphics.h" />
 		<Unit filename="include/hashmap.h" />
+		<Unit filename="include/keymap.h" />
+		<Unit filename="include/keymap_codes.gen.h" />
 		<Unit filename="include/list.h" />
 		<Unit filename="include/pack.h" />
+		<Unit filename="include/physics.h" />
 		<Unit filename="include/physics_debug.h" />
 		<Unit filename="include/scene.h" />
 		<Unit filename="main.c">
@@ -87,10 +88,19 @@
 		<Unit filename="src/console.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="src/cvars.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="src/entities/configurable_entity.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/entities/player_entity.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/entities/player_spawn_entity.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/entities/weapon_entity.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/entity.c">
@@ -105,10 +115,16 @@
 		<Unit filename="src/hashmap.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="src/keymap.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="src/list.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/pack.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/physics.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/physics_debug.c">

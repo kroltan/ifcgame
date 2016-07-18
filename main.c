@@ -1,6 +1,8 @@
 #include "scene.h"
+#include "cvars.h"
 #include "config.h"
 #include "entity.h"
+#include "keymap.h"
 #include "console.h"
 #include "graphics.h"
 #include "game_state.h"
@@ -62,6 +64,7 @@ void init_core() {
 	);
 
 	game.event_queue = al_create_event_queue();
+	al_register_event_source(game.event_queue, al_get_mouse_event_source());
 	al_register_event_source(game.event_queue, al_get_keyboard_event_source());
 	al_register_event_source(game.event_queue, al_get_display_event_source(game.display));
 	al_register_event_source(game.event_queue, al_get_timer_event_source(game.main_timer));
@@ -69,8 +72,27 @@ void init_core() {
 	game.last_frame = al_get_time();
 }
 
+
+cpBool _collision_enter(cpArbiter *arb, cpSpace *space, cpDataPointer data) {
+    (void) space;
+    (void) data;
+
+    cpBody *a, *b;
+    cpArbiterGetBodies(arb, &a, &b);
+    Entity *potential_ent_a = cpBodyGetUserData(a);
+    Entity *potential_ent_b = cpBodyGetUserData(b);
+    if (entity_valid(potential_ent_a)) {
+        entity_on_collide(potential_ent_a, arb);
+    }
+    if (entity_valid(potential_ent_b)) {
+        entity_on_collide(potential_ent_b, arb);
+    }
+
+    return cpTrue;
+}
 void game_init() {
     if (!( al_init()
+        && al_install_mouse()
         && al_install_keyboard()
         && al_init_primitives_addon()
         && al_init_image_addon()
@@ -81,11 +103,15 @@ void game_init() {
     }
 
     init_config();
+    init_keymap();
     init_core();
     init_connection();
 
 	game.space = cpSpaceNew();
-	cpSpaceSetGravity(game.space, cpv(0, -1));
+	cpSpaceSetGravity(game.space, cpv(0, 0));
+	cpSpaceSetDamping(game.space, 0.5);
+	cpCollisionHandler *handler = cpSpaceAddDefaultCollisionHandler(game.space);
+	handler->beginFunc = _collision_enter;
 
 	if (!( game.main_timer
         && game.display
@@ -117,15 +143,17 @@ void _gui_single_entity(Entity *ent, void *data) {
 
     entity_gui(ent);
 }
-
 void game_loop() {
     ALLEGRO_EVENT event;
     al_wait_for_event(game.event_queue, &event);
 
-    if (console_on_event(&event)) {
-        entity_each(_handle_event, &event);
+    connection_on_event(&event);
+    cvar_on_event(&event);
+    scene_on_event(&event);
+    if (!console_on_event(&event)) {
+        keymap_on_event(&event);
     }
-
+    entity_each(_handle_event, &event);
 
     if (event.type == ALLEGRO_EVENT_DISPLAY_RESIZE && event.display.source == game.display) {
         al_acknowledge_resize(game.display);
@@ -144,6 +172,7 @@ void game_loop() {
         #ifdef PHYSICS_DRAW_DEBUG
         cpSpaceDebugDraw(game.space, &physics_debug);
         #endif // PHYSICS_DRAW_DEBUG
+
         entity_each(_update_single_entity, NULL);
 
         al_use_transform(&identity);
@@ -161,6 +190,11 @@ void game_loop() {
         al_use_projection_transform(&backup);
 
         al_flip_display();
+        keymap_update();
+    }
+
+    if (ALLEGRO_EVENT_TYPE_IS_USER(event.type)) {
+        al_unref_user_event(&event.user);
     }
 }
 
@@ -174,7 +208,6 @@ void game_shutdown() {
 int main() {
     srand(time(NULL));
     game_init();
-    //scene_load("test");
 
     while (game.running) game_loop();
 

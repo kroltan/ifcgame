@@ -18,8 +18,11 @@ typedef enum {
 
 void coords_use_local(Entity *ent);
 void coords_use_global();
+void screen_to_world(float *x, float *y);
+
 void draw_sprite(ALLEGRO_BITMAP *bmp, float x, float y, float scale);
 void draw_textf(ALLEGRO_FONT *font, ALLEGRO_COLOR color, float x, float y, float size, TextFlags flags, const char *format, ...);
+
 void camera_set(float x, float y, float size);
 
 #endif // GRAPHICS_H

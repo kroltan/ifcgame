@@ -3,6 +3,7 @@
 #include "game_state.h"
 #include "connection.h"
 #include "graphics.h"
+#include "physics.h"
 #include "hashmap.h"
 #include "config.h"
 #include "pack.h"
@@ -18,19 +19,32 @@
 #include <string.h>
 #include <math.h>
 
+#define POLY_MAX_POINTS 256
 const int CONFIGURABLE_ENTITY_PACKET = 0x90;
+const size_t MAX_DEFINITION_NAME_LENGTH = 32;
 
 typedef struct {
     bool initialized;
     ALLEGRO_BITMAP *sprite;
     float sprite_scale;
     cpVect sprite_offset;
+    cpBody *controller;
 } ConfigurableEntityData;
 
 
 void configurable_init(Entity *ent) {
     ConfigurableEntityData *data = entity_data(ent);
     data->initialized = false;
+    cpBodySetType(entity_body(ent), CP_BODY_TYPE_KINEMATIC); //until initialized
+}
+
+void configurable_update(Entity *ent) {
+    ConfigurableEntityData *data = entity_data(ent);
+    if (!data->initialized) return;
+
+    if (data->controller) {
+        cpBodySetPosition(data->controller, cpBodyGetPosition(entity_body(ent)));
+    }
 }
 
 void configurable_draw(Entity *ent) {
@@ -42,28 +56,15 @@ void configurable_draw(Entity *ent) {
     }
 }
 
+bool instantiate_definition(const char *definition, Entity *ent);
 void configurable_event(Entity *ent, ALLEGRO_EVENT *ev) {
-    if (ev->type == CONNECTION_EVENT_ID && ev->user.data1 == CONFIGURABLE_ENTITY_PACKET) {
+    if (ev->type == CONNECTION_RECEIVE_EVENT_ID && ev->user.data1 == CONFIGURABLE_ENTITY_PACKET) {
         uint32_t eid;
-        char bitmap_name[256];
-        cpVect offset;
-        float scale;
+        char definition_name[MAX_DEFINITION_NAME_LENGTH];
 
-        unpack_format((const char *)ev->user.data2,
-            "u s f ff", &eid,
-            bitmap_name, &scale,
-            &offset.x, &offset.y
-        );
+        unpack_format((const char *)ev->user.data2, "us", &eid, definition_name);
         if (eid == entity_id(ent)) {
-            ConfigurableEntityData *data = entity_data(ent);
-
-            ALLEGRO_PATH *path = game_asset_path(bitmap_name);
-            data->sprite = al_load_bitmap(al_path_cstr(path, ALLEGRO_NATIVE_PATH_SEP));
-            al_destroy_path(path);
-
-            data->sprite_offset = offset;
-            data->sprite_scale = scale;
-            data->initialized = true;
+            instantiate_definition(definition_name, ent);
         }
     }
 }
@@ -72,11 +73,10 @@ const EntityType ConfigurableEntity = {
     .name = "ConfigurableEntity",
     .data_size = sizeof(ConfigurableEntityData),
     .on_init = configurable_init,
+    .on_update = configurable_update,
     .on_draw = configurable_draw,
     .on_event = configurable_event
 };
-
-#define POLY_MAX_POINTS 256
 
 typedef enum {
     CE_SD_CIRCLE,
@@ -109,13 +109,13 @@ typedef struct {
     List *shapes; /**< item=ShapeDescription */
     float mass;
     float moment;
+    float groundFriction;
     cpBodyType type;
 } CEPhysics;
 
 typedef struct {
     cpVect offset;
     float scale;
-    char bitmap_name[256];
     ALLEGRO_BITMAP *bitmap;
 } CEVisual;
 
@@ -126,12 +126,10 @@ typedef struct {
 
 HashMap *configurable_kinds = NULL; /**< key=string, value=CEDescription */
 
-Entity *entity_instantiate(const char *definition) {
+bool instantiate_definition(const char *definition, Entity *ent) {
     void *desc_out;
     if (hashmap_try_get(configurable_kinds, definition, &desc_out)) {
         CEDescription *desc = desc_out;
-
-        Entity *ent = entity_new(&ConfigurableEntity);
 
         ConfigurableEntityData *data = entity_data(ent);
         data->sprite = desc->visual.bitmap;
@@ -139,28 +137,14 @@ Entity *entity_instantiate(const char *definition) {
         data->sprite_scale = desc->visual.scale;
         data->initialized = true;
 
-        uint32_t eid = entity_id(ent);
-        char packet[sizeof(eid) + 256 + 3 * sizeof(float)];
-        pack_format(
-            packet, "u s f ff", &eid,
-            desc->visual.bitmap_name, data->sprite_scale,
-            data->sprite_offset.x, data->sprite_offset.y
-        );
-        connection_send(CONFIGURABLE_ENTITY_PACKET, 1, packet, sizeof(packet));
-
         cpBody *body = entity_body(ent);
-        cpBodySetMass(body, desc->physics.mass);
-        cpBodySetMoment(body, desc->physics.moment);
-        switch (desc->physics.type) {
-        default: case 0:
-            cpBodySetType(body, CP_BODY_TYPE_DYNAMIC);
-            break;
-        case 1:
-            cpBodySetType(body, CP_BODY_TYPE_STATIC);
-            break;
-        case 2:
-            cpBodySetType(body, CP_BODY_TYPE_KINEMATIC);
-            break;
+        cpBodySetType(body, desc->physics.type);
+        if (desc->physics.type == CP_BODY_TYPE_DYNAMIC) {
+            cpBodySetMass(body, desc->physics.mass);
+            cpBodySetMoment(body, desc->physics.moment);
+
+            data->controller = cpSpaceAddBody(game.space,cpBodyNewKinematic());
+            physics_add_top_down_friction(body, data->controller, desc->physics.groundFriction, NULL, NULL);
         }
         size_t shapes_length = list_length(desc->physics.shapes);
         for (size_t i = 0; i < shapes_length; ++i) {
@@ -194,9 +178,24 @@ Entity *entity_instantiate(const char *definition) {
                 cpSpaceAddShape(game.space, shape);
             }
         }
-        return ent;
+        return true;
     }
 
+    return false;
+}
+
+Entity *entity_instantiate(const char *definition) {
+    Entity *ent = entity_new(&ConfigurableEntity);
+
+    if (instantiate_definition(definition, ent)) {
+        uint32_t eid = entity_id(ent);
+        char packet[sizeof(eid) + MAX_DEFINITION_NAME_LENGTH];
+        pack_format(packet, "us", eid, definition);
+        connection_send(CONFIGURABLE_ENTITY_PACKET, 1, packet, sizeof(packet));
+
+        return ent;
+    }
+    entity_destroy(ent);
     return NULL;
 }
 
@@ -209,7 +208,7 @@ static List *parse_shape_descriptions(const char *text) {
     do {
         int scan_len;
         float friction;
-        char defname[33];
+        char defname[MAX_DEFINITION_NAME_LENGTH];
         if (sscanf(content, "%32s %f%n", defname, &friction, &scan_len) == 2)  {
             content += scan_len;
         } else {
@@ -281,6 +280,7 @@ static CEDescription *load_entity_description(ALLEGRO_FILE *file) {
     desc->physics.shapes = parse_shape_descriptions(config_get_string(config, "Physics", "Shapes", ""));
     desc->physics.mass = config_get_double(config, "Physics", "Mass", 0.0);
     desc->physics.moment = config_get_double(config, "Physics", "Moment", 0.0);
+    desc->physics.groundFriction = config_get_double(config, "Physics", "GroundFriction", 1.0);
     desc->physics.type = config_get_ll(config, "Physics", "Type", 0);
 
     ALLEGRO_PATH *path = game_asset_path(config_get_string(config, "Visual", "Sprite", NULL));

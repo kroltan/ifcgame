@@ -8,99 +8,109 @@
 static const size_t DEFAULT_BUCKET_COUNT = 32;
 
 typedef struct {
-    const void *key;
+    void *key;
     void *value;
-    hashmap_hash_t hash;
+    HashMapHash hash;
 } HashMapNode;
-typedef List *HashMapBucket;
 
 struct HashMap {
-    List *buckets; //Item: HashMapBucket
+    List *buckets; //Item: List
+    HashMapKeyAllocator keyAlloc;
     HashMapComparator compare;
-    HashMapHash hash;
+    HashMapHasher hash;
 };
 
-static inline HashMapBucket hashmap_find_bucket(const HashMap *hmap, const void *key, bool create, hashmap_hash_t *out_hash) {
-    hashmap_hash_t hash = hmap->hash(key);
-    size_t bucket_idx = hash % list_length(hmap->buckets);
-    *out_hash = hash;
-
-    HashMapBucket bucket = list_nth(hmap->buckets, bucket_idx);
-    if (!bucket && create) {
-        bucket = list_new();
-        list_set(hmap->buckets, bucket_idx, bucket);
-    }
-
-    return bucket;
-}
-
-static inline bool hashmap_get_node_index(const HashMap *hmap, hashmap_hash_t hash, HashMapBucket bucket, const void *key, size_t *out_idx) {
-    size_t bucket_len = list_length(bucket);
-    for (size_t i = 0; i < bucket_len; ++i) {
-        HashMapNode *node = list_nth(bucket, i);
-        if (node->hash == hash && hmap->compare(node->key, key) == 0) {
-            *out_idx = i;
-            return true;
-        }
-    }
-    return false;
-}
-
-
-HashMap *hashmap_new(HashMapComparator comparator, HashMapHash hasher) {
-    HashMap *hmap = malloc(sizeof(HashMap));
-    hmap->buckets = list_new();
-    hmap->compare = comparator;
-    hmap->hash = hasher;
-
+HashMap *hashmap_new(HashMapKeyAllocator allocator, HashMapComparator comparator, HashMapHasher hasher) {
+    HashMap *map = malloc(sizeof(*map));
+    map->buckets = list_new();
     for (size_t i = 0; i < DEFAULT_BUCKET_COUNT; ++i) {
-        list_push(hmap->buckets, NULL);
+        list_push(map->buckets, list_new());
     }
+    map->keyAlloc = allocator;
+    map->compare = comparator;
+    map->hash = hasher;
 
-    return hmap;
+    return map;
 }
 
-int _strk_cmp(const void *a, const void *b) {
-    return strcmp(a, b);
-}
-hashmap_hash_t _strk_hash(const void *key) {
-    const char *keystr = key;
-    size_t length = strlen(keystr);
-
-    hashmap_hash_t hash = 0;
-
-    for (size_t i = 0; i < length; ++i) {
-        hash += keystr[i];
-        hash += hash << 10;
-        hash ^= hash >> 6;
+void *_hashmap_strk_alloc(void *key, bool create) {
+    if (create) {
+        size_t str_len = strlen(key);
+        char *new_key = malloc(str_len + 1);
+        memcpy(new_key, key, str_len);
+        new_key[str_len] = '\0';
+        return new_key;
+    } else {
+        free(key);
+        return NULL;
     }
+}
+HashMapHash _hashmap_strk_hash(const void *key) {
+    const char *key_str = key;
 
-    hash += hash << 3;
-    hash ^= hash >> 11;
-    hash += hash << 15;
+    // http://stackoverflow.com/questions/7666509/hash-function-for-string
+    HashMapHash hash = 5831;
+
+    for (; *key_str; key_str++) {
+        hash = ((hash << 5) + hash) + key_str[0];
+    }
 
     return hash;
 }
-
+int _hashmap_strk_cmp(const void *a, const void *b) {
+    return strcmp((const char *)a, (const char *)b);
+}
 HashMap *hashmap_new_str_key() {
-    return hashmap_new(_strk_cmp, _strk_hash);
+    return hashmap_new(_hashmap_strk_alloc, _hashmap_strk_cmp, _hashmap_strk_hash);
 }
 
 void hashmap_destroy(HashMap *hmap) {
-    free(hmap->buckets);
-    free(hmap);
+    size_t bucket_count = list_length(hmap->buckets);
+    for (size_t bucket_i = 0; bucket_i < bucket_count; ++bucket_i) {
+        List *bucket = list_nth(hmap->buckets, bucket_i);
+        size_t node_count = list_length(bucket);
+        for (size_t node_i = 0; node_i < node_count; ++node_i) {
+            HashMapNode *node = list_nth(bucket, node_i);
+            free(node->key);
+            free(node);
+        }
+        list_destroy(bucket);
+    }
+    list_destroy(hmap->buckets);
+}
+
+
+
+List *_hashmap_bucket_for(const HashMap *hmap, HashMapHash hash) {
+    size_t index = hash % list_length(hmap->buckets);
+    return list_nth(hmap->buckets, index);
+}
+
+HashMapNode *_hashmap_find_node(const HashMap *hmap, const List *bucket, const void *key) {
+    size_t length = list_length(bucket);
+    for (size_t i = 0; i < length; ++i) {
+        HashMapNode *current = list_nth(bucket, i);
+        if (hmap->compare(current->key, key) == 0) {
+            return current;
+        }
+    }
+    return NULL;
 }
 
 void hashmap_set(HashMap *hmap, const void *key, void *value) {
-    hashmap_hash_t hash;
-    HashMapBucket bucket = hashmap_find_bucket(hmap, key, true, &hash);
+    // safe to cast away key const when allocating
+    void *new_key = hmap->keyAlloc((void *) key, true);
+    HashMapHash hash = hmap->hash(new_key);
 
-    HashMapNode *node = malloc(sizeof(HashMapNode));
-    node->key = key;
+    List *bucket = _hashmap_bucket_for(hmap, hash);
+    HashMapNode *node = _hashmap_find_node(hmap, bucket, new_key);
+    if (!node) {
+        node = malloc(sizeof(*node));
+        node->key = new_key;
+        node->hash = hash;
+        list_push(bucket, node);
+    }
     node->value = value;
-    node->hash = hash;
-
-    list_push(bucket, node);
 }
 
 void *hashmap_get(const HashMap *hmap, const void *key) {
@@ -112,41 +122,39 @@ void *hashmap_get(const HashMap *hmap, const void *key) {
 }
 
 bool hashmap_try_get(const HashMap *hmap, const void *key, void **out_value) {
-    hashmap_hash_t hash;
-    HashMapBucket bucket = hashmap_find_bucket(hmap, key, false, &hash);
-    if (!bucket) return false;
-
-    size_t node_i;
-    if (hashmap_get_node_index(hmap, hash, bucket, key, &node_i)) {
-        HashMapNode *node = list_nth(bucket, node_i);
+    const List *bucket = _hashmap_bucket_for(hmap, hmap->hash(key));
+    HashMapNode *node = _hashmap_find_node(hmap, bucket, key);
+    if (node) {
         *out_value = node->value;
         return true;
     }
-
+    *out_value = NULL;
     return false;
 }
 
 void *hashmap_remove(HashMap *hmap, const void *key) {
-    hashmap_hash_t hash;
-    HashMapBucket bucket = hashmap_find_bucket(hmap, key, false, &hash);
-    if (!bucket) return NULL;
+    List *bucket = _hashmap_bucket_for(hmap, hmap->hash(key));
+    HashMapNode *node = _hashmap_find_node(hmap, bucket, key);
+    if (node) {
+        void *value = node->value;
 
-    size_t node_i;
-    if (hashmap_get_node_index(hmap, hash, bucket, key, &node_i)) {
-        HashMapNode *node = list_remove(bucket, node_i);
-        void *data = node->value;
+        hmap->keyAlloc(node->key, false);
         free(node);
-        return data;
-    }
 
+        size_t index;
+        if (list_index_of(bucket, node, &index)) {
+            list_remove(bucket, index);
+        }
+        return value;
+    }
     return NULL;
 }
 
 void hashmap_each(const HashMap *hmap, HashMapIterator callback) {
-    const size_t bucket_count = list_length(hmap->buckets);
+    size_t bucket_count = list_length(hmap->buckets);
     for (size_t bucket_i = 0; bucket_i < bucket_count; ++bucket_i) {
-        HashMapBucket bucket = list_nth(hmap->buckets, bucket_i);
-        const size_t node_count = list_length(bucket);
+        List *bucket = list_nth(hmap->buckets, bucket_i);
+        size_t node_count = list_length(bucket);
         for (size_t node_i = 0; node_i < node_count; ++node_i) {
             HashMapNode *node = list_nth(bucket, node_i);
             callback(hmap, node->key, node->value);

@@ -27,6 +27,14 @@ void coords_use_global() {
     al_use_transform(&global);
 }
 
+void screen_to_world(float *x, float *y) {
+    ALLEGRO_TRANSFORM t;
+    al_identity_transform(&t);
+    al_compose_transform(&t, al_get_current_projection_transform());
+    al_invert_transform(&t);
+    al_transform_coordinates(&t, x, y);
+}
+
 void draw_sprite(ALLEGRO_BITMAP *bmp, float x, float y, float scale) {
     ALLEGRO_TRANSFORM t, current;
     al_copy_transform(&current, al_get_current_transform());
@@ -82,6 +90,8 @@ void draw_textf(ALLEGRO_FONT *font, ALLEGRO_COLOR color, float x, float y, float
     al_use_transform(&t);
     al_draw_ustr(font, color, 0, 0, flags & MASK, text);
     al_use_transform(&current);
+
+    al_ustr_free(text);
 }
 
 void camera_set(float x, float y, float size) {

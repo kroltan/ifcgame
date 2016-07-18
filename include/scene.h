@@ -8,7 +8,6 @@
 
 bool scene_load(const char *filename);
 
-bool scene_save(const char *filename);
-bool scene_savef(ALLEGRO_FILE *fp);
+void scene_on_event(ALLEGRO_EVENT *event);
 
 #endif // SCENE_H

@@ -14,28 +14,6 @@ typedef union {
     int8_t i8[4];
 } IntBytes32;
 
-static inline bool is_little_endian() {
-    IntBytes32 endian_check;
-    endian_check.u32 = 0x01020304;
-
-    return endian_check.u8[0] != 1;
-}
-
-static inline uint32_t flip_bytes32(uint32_t value) {
-    return (value & 0x000000ff) << 24
-         | (value & 0x0000ff00) << 8
-         | (value & 0x00ff0000) >> 8
-         | (value & 0xff000000) >> 24;
-}
-
-uint32_t change_endianness(uint32_t value) {
-    if (is_little_endian()) {
-        return flip_bytes32(value);
-    } else {
-        return value;
-    }
-}
-
 void pack_format(char dest[], const char *format, ...) {
     size_t dest_i = 0;
 
@@ -54,11 +32,12 @@ void pack_format(char dest[], const char *format, ...) {
             case 'b':
                 //va_list char is promoted to int, so use int in va_arg
                 dest[dest_i] = va_arg(arguments, int);
-                dest_i++;
+                dest_i += sizeof(dest[dest_i]);
                 break;
             case 'f':
                 //va_list float is promoted to double, so use double in va_arg
-                bytes.f32 = va_arg(arguments, double);
+                bytes.f32 = (float) va_arg(arguments, double);
+                memcpy(dest + dest_i, bytes.u8, sizeof(bytes.u8));
                 dest_i += sizeof(bytes.f32);
                 break;
             case 's': {
@@ -94,14 +73,14 @@ void unpack_format(const char source[], const char *format, ...) {
         switch (*format) {
             case 'u': {
                 uint32_t *u32 = va_arg(arguments, uint32_t*);
-                memcpy(bytes.u8, source + source_i, 4);
+                memcpy(bytes.u8, source + source_i, sizeof(bytes.u8));
                 *u32 = bytes.u32;
                 source_i += sizeof(*u32);
                 break;
             }
             case 'd': {
                 int32_t *i32 = va_arg(arguments, int32_t*);
-                memcpy(bytes.u8, source + source_i, 4);
+                memcpy(bytes.u8, source + source_i, sizeof(bytes.u8));
                 *i32 = bytes.i32;
                 source_i += sizeof(*i32);
                 break;
@@ -115,7 +94,7 @@ void unpack_format(const char source[], const char *format, ...) {
             }
             case 'f': {
                 float *f32 = va_arg(arguments, float*);
-                memcpy(bytes.u8, source + source_i, 4);
+                memcpy(bytes.u8, source + source_i, sizeof(bytes.u8));
                 *f32 = bytes.f32;
                 source_i += sizeof(*f32);
                 break;

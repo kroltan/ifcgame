@@ -33,14 +33,18 @@ void _pd_fat_segment(cpVect a, cpVect b, cpFloat radius, cpSpaceDebugColor outli
 void _pd_polygon(int count, const cpVect *verts, cpFloat radius, cpSpaceDebugColor outlineColor, cpSpaceDebugColor fillColor, cpDataPointer data) {
     (void) data;
     (void) radius;
+    (void) outlineColor;
 
-    al_draw_filled_polygon((float *)verts, count, _cp_to_al_rgbaf(fillColor));
-    al_draw_polygon((float *)verts, count, ALLEGRO_LINE_JOIN_BEVEL, _cp_to_al_rgbaf(outlineColor), 0, 4);
+    for (int i = 1; i < count; ++i) {
+        cpVect curr = verts[i];
+        cpVect prev = verts[i - 1];
+        al_draw_line(curr.x, curr.y, prev.x, prev.y, _cp_to_al_rgbaf(fillColor), 0);
+    }
 }
 void _pd_dot(cpFloat size, cpVect pos, cpSpaceDebugColor color, cpDataPointer data) {
     (void) data;
 
-    al_draw_filled_circle(pos.x, pos.y, size, _cp_to_al_rgbaf(color));
+    al_draw_filled_circle(pos.x, pos.y, size * 0.01, _cp_to_al_rgbaf(color));
 }
 cpSpaceDebugColor _pd_shape_color(cpShape *shape, cpDataPointer data) {
     (void) data;
@@ -63,7 +67,7 @@ cpSpaceDebugDrawOptions physics_debug = {
     .drawFatSegment = _pd_fat_segment,
     .drawPolygon = _pd_polygon,
     .drawDot = _pd_dot,
-    .flags = CP_SPACE_DEBUG_DRAW_SHAPES,
+    .flags = CP_SPACE_DEBUG_DRAW_SHAPES | CP_SPACE_DEBUG_DRAW_CONSTRAINTS,
     .shapeOutlineColor = {1, 1, 1, 1},
     .colorForShape = _pd_shape_color,
     .constraintColor = {1, 0, 1, 1},

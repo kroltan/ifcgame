@@ -4,12 +4,14 @@
 
 #include "game_state.h"
 #include "connection.h"
+#include "console.h"
 #include "entity.h"
 #include "config.h"
 #include "list.h"
 #include "entities/configurable_entity.h"
 
 #include <string.h>
+#include <stdio.h>
 
 ALLEGRO_PATH *get_scene_path(const char *filename) {
     ALLEGRO_PATH *path = al_get_standard_path(ALLEGRO_RESOURCES_PATH);
@@ -32,21 +34,23 @@ bool _ent_loader(ALLEGRO_CONFIG *scene, const char *section, const char *key) {
     char ent_type[65];
     float x, y, rotation;
     char confent_name[128];
-    int fields = sscanf(config_get_string(scene, section, key, ""), "%65s %f %f %f %s", ent_type, &x, &y, &rotation, confent_name);
+    int fields = sscanf(config_get_string(scene, section, key, ""), "%65s %f %f %f %128s", ent_type, &x, &y, &rotation, confent_name);
 
-    cpBody *body;
+    Entity *ent;
     if (fields == 5 && strcmp(ent_type, ConfigurableEntity.name) == 0) {
-        body = entity_body(entity_instantiate(confent_name));
+        ent = entity_instantiate(confent_name);
     } else if (fields == 4) {
-        body = entity_body(entity_new(entity_type_from_name(ent_type)));
+        ent = entity_new(entity_type_from_name(ent_type));
     } else {
         return true;
     }
+    cpBody *body = entity_body(ent);
     cpBodySetPosition(body, cpv(x, y));
     cpBodySetAngle(body, rotation * ALLEGRO_PI / 180);
     if (cpBodyGetType(body) == CP_BODY_TYPE_STATIC) {
         cpSpaceReindexShapesForBody(game.space, body);
     }
+    entity_flag_dirty(ent, true);
 
     return true;
 }
@@ -67,19 +71,14 @@ bool scene_load(const char *filename) {
     return true;
 }
 
-bool scene_save(const char *filename) {
-    ALLEGRO_PATH *path = get_scene_path(filename);
-    ALLEGRO_FILE *fp = al_fopen(al_path_cstr(path, ALLEGRO_NATIVE_PATH_SEP), "w");
-    al_destroy_path(path);
-
-    if (!fp) return false;
-
-    bool status = scene_savef(fp);
-    al_fclose(fp);
-
-    return status;
-}
-
-bool scene_savef(ALLEGRO_FILE *fp) {
-    return false;
+void scene_on_event(ALLEGRO_EVENT *event) {
+    if (event->type == CONSOLE_EVENT_ID) {
+        const char *command = (const char *) event->user.data1;
+        char map[64];
+        if (sscanf(command, "map %64s", map) == 1) {
+            scene_load(map);
+        } if (!strcmp("unload", command)) {
+            entity_each(_delete_free_ents, NULL);
+        }
+    }
 }

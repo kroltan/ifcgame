@@ -7,8 +7,8 @@ includes=$(grep "#" <<<"$entries")
 types=$(grep -v "#"<<<"$entries" | sed 's/.*EntityType\s\(.*\);/\t\&\1,/')
 
 printf "\
-#ifndef ALL_ENT_TYPES_H
-#define ALL_ENT_TYPES_H
+#ifndef ENTITY_TYPES_GEN_H
+#define ENTITY_TYPES_GEN_H
 
 %s
 
@@ -19,5 +19,5 @@ const EntityType *ALL_ENTITY_TYPES[] = {
 };
 const size_t ALL_ENTITY_TYPES_COUNT = sizeof(ALL_ENTITY_TYPES) / sizeof (*ALL_ENTITY_TYPES);
 
-#endif //ALL_ENT_TYPES_H
+#endif //ENTITY_TYPES_GEN_H
 " "$includes" "$types" > ./include/entity_types.gen.h

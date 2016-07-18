@@ -4,14 +4,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef uint32_t hashmap_hash_t;
+typedef uint32_t HashMapHash;
 typedef struct HashMap HashMap;
 
 typedef int (*HashMapComparator)(const void *a, const void *b);
-typedef hashmap_hash_t (*HashMapHash)(const void *key);
+typedef HashMapHash (*HashMapHasher)(const void *key);
+typedef void *(*HashMapKeyAllocator)(void *key, bool create);
 typedef bool (*HashMapIterator)(const HashMap *hmap, const void *key, void *value);
 
-HashMap *hashmap_new(HashMapComparator comparator, HashMapHash hasher);
+HashMap *hashmap_new(HashMapKeyAllocator allocator, HashMapComparator comparator, HashMapHasher hasher);
 HashMap *hashmap_new_str_key();
 void hashmap_destroy(HashMap *hmap);
 
