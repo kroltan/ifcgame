@@ -41,10 +41,24 @@
 			<Add directory="include" />
 		</Compiler>
 		<Linker>
+			<Add option="`pkg-config --libs" />
+			<Add option="allegro_image-5" />
+			<Add option="allegro-5" />
+			<Add option="allegro_ttf-5" />
+			<Add option="allegro_acodec-5" />
+			<Add option="allegro_video-5" />
+			<Add option="allegro_dialog-5" />
+			<Add option="allegro_physfs-5" />
+			<Add option="allegro_primitives-5" />
+			<Add option="allegro_font-5" />
+			<Add option="allegro_memfile-5" />
+			<Add option="allegro_color-5" />
+			<Add option="allegro_audio-5" />
+			<Add option="allegro_main-5" />
+			<Add option="`" />
 			<Add library="m" />
 			<Add library="libenet" />
 			<Add library="chipmunk" />
-			<Add library="allegro_monolith" />
 		</Linker>
 		<ExtraCommands>
 			<Add before='bash &quot;$(PROJECT_DIR)build.sh&quot; &quot;$(PROJECT_DIR)&quot;' />
