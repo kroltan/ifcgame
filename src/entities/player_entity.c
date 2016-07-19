@@ -3,6 +3,7 @@
 #include "cvars.h"
 #include "keymap.h"
 #include "physics.h"
+#include "console.h"
 #include "graphics.h"
 #include "game_state.h"
 #include "connection.h"
@@ -91,9 +92,8 @@ void player_update(Entity *ent) {
 void player_draw(Entity *ent) {
     PlayerEntityData *data = entity_data(ent);
 
-    const char *health_str = cvar_get_player(entity_owner(ent), "health");
-    if (!health_str) health_str = "0";
-    float health_percent = atof(health_str) / MAX_HEALTH;
+    float health_percent = cvar_getd_player(entity_owner(ent), "health") / (float) MAX_HEALTH;
+    printf("%f\n", health_percent);
     float radius = cpCircleShapeGetRadius(data->head);
     al_draw_circle(0, 0, radius, al_map_rgb(255, 255, 255), 0);
     al_draw_arc(0, 0, 1.3 * radius, 0, 2 * ALLEGRO_PI * health_percent, al_map_rgb(0, 255, 0), 0.1);
@@ -102,8 +102,19 @@ void player_draw(Entity *ent) {
         al_map_rgb(255, 255, 255), 0,
         -cpCircleShapeGetRadius(data->head),
         1, TEXT_HALIGN_CENTER,
-        "%u", entity_id(ent)
+        "%s", cvar_get_player(entity_owner(ent), "name")
     );
+}
+
+void player_event(Entity *ent, ALLEGRO_EVENT *event) {
+    (void) ent;
+
+    if (event->type == CONSOLE_EVENT_ID) {
+        char name[32];
+        if (sscanf((const char *)event->user.data1, "name %s", name) == 1) {
+            cvar_set_player(connection_get_user_id(), "name", name);
+        }
+    }
 }
 
 const EntityType PlayerEntity = {
@@ -111,7 +122,8 @@ const EntityType PlayerEntity = {
     .data_size = sizeof(PlayerEntityData),
     .on_init = player_init,
     .on_update = player_update,
-    .on_draw = player_draw
+    .on_draw = player_draw,
+    .on_event = player_event
 };
 
 Entity *player_new_with_id(uint32_t user_id) {

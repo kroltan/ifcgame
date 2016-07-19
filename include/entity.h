@@ -27,6 +27,8 @@ typedef struct {
 void entity_each(void (*iter)(Entity *, void *), void *argument);
 Entity *entity_from_id(uint32_t id);
 
+void entity_step();
+
 Entity *entity_new(const EntityType *type);
 void entity_destroy(Entity *ent);
 void entity_update(Entity *ent);

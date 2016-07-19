@@ -144,12 +144,14 @@ void _gui_single_entity(Entity *ent, void *data) {
     entity_gui(ent);
 }
 void game_loop() {
+    entity_step();
+
     ALLEGRO_EVENT event;
     al_wait_for_event(game.event_queue, &event);
 
+    scene_on_event(&event);
     connection_on_event(&event);
     cvar_on_event(&event);
-    scene_on_event(&event);
     if (!console_on_event(&event)) {
         keymap_on_event(&event);
     }

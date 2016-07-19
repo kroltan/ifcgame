@@ -17,6 +17,7 @@ static const size_t MAX_TYPE_NAME_LENGTH = 128;
 static const double ENTITY_SYNC_RATE = 0.2;
 
 List *all_entities; /**< item=Entity */
+List *destroy_queue; /**< item=Entity */
 
 struct Entity {
     uint32_t TAG;
@@ -163,7 +164,19 @@ void _entity_destroy(Entity *ent, bool broadcast) {
     free(ent);
 }
 void entity_destroy(Entity *ent) {
-    _entity_destroy(ent, true);
+    if (!destroy_queue) {
+        destroy_queue = list_new();
+    }
+    list_push(destroy_queue, ent);
+}
+
+void entity_step() {
+    if (!destroy_queue) return;
+
+    while (list_length(destroy_queue)) {
+        Entity *ent = list_pop(destroy_queue);
+        _entity_destroy(ent, true);
+    }
 }
 
 void entity_update(Entity *ent) {

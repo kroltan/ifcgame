@@ -15,6 +15,7 @@
 static const float WEAPON_WIDTH = 0.25;
 static const float WEAPON_HEIGHT = 2.0;
 static const float WEAPON_DAMAGE = 3;
+static const float WEAPON_HURT_THRESHOLD = 1;
 
 typedef struct {
     Entity *owner;
@@ -71,8 +72,13 @@ void weapon_collide(Entity *ent, cpArbiter *arb) {
         || entity_owner(other_ent) == connection_get_user_id()) {
         return;
     }
+
+    float speed = cpvlength(cpBodyGetVelocity(body));
+    if (speed < WEAPON_HURT_THRESHOLD) {
+        return;
+    }
     int target_health = cvar_getd_player(entity_owner(other_ent), "health");
-    int damage = WEAPON_DAMAGE * cpvlength(cpBodyGetVelocity(body));
+    int damage = WEAPON_DAMAGE * speed;
     char new_health_str[32];
     sprintf(new_health_str, "%d", target_health - damage);
     cvar_set_player(entity_owner(other_ent), "health", new_health_str);
