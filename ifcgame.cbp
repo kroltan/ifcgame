@@ -59,6 +59,7 @@
 			<Add library="m" />
 			<Add library="libenet" />
 			<Add library="chipmunk" />
+			<Add library="allegro_monolith" />
 		</Linker>
 		<ExtraCommands>
 			<Add before='bash &quot;$(PROJECT_DIR)build.sh&quot; &quot;$(PROJECT_DIR)&quot;' />

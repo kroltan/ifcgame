@@ -12,7 +12,8 @@ int cvar_getd_player(uint32_t id, const char *var);
 
 void cvar_set(const char *var, const char *value);
 void cvar_set_player(uint32_t id, const char *var, const char *value);
-
+void cvar_setd(const char *var, int value);
+void cvar_setd_player(uint32_t id, const char *var, int value);
 
 
 void cvar_on_event(ALLEGRO_EVENT *event);

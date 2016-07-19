@@ -68,6 +68,18 @@ void cvar_set_player(uint32_t id, const char *var, const char *value) {
     cvar_set(name, value);
 }
 
+void cvar_setd(const char *var, int value) {
+    char value_str[MAX_CVAR_LENGTH];
+    sprintf(value_str, "%d", value);
+    cvar_set(var, value_str);
+}
+
+void cvar_setd_player(uint32_t id, const char *var, int value) {
+    char value_str[MAX_CVAR_LENGTH];
+    sprintf(value_str, "%d", value);
+    cvar_set_player(id, var, value_str);
+}
+
 void cvar_on_event(ALLEGRO_EVENT *event) {
     if (!cvar_map) {
         cvar_map = hashmap_new_str_key();

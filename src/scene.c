@@ -77,9 +77,7 @@ void scene_on_event(ALLEGRO_EVENT *event) {
         char map[64];
         if (sscanf(command, "map %64s", map) == 1) {
             scene_load(map);
-        } if (!strcmp("unload", command)) {
-            entity_each(_delete_free_ents, NULL);
-        } if (!strcmp("exit", command)) {
+        } else if (!strcmp("exit", command)) {
             exit(0);
         }
     }

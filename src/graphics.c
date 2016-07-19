@@ -5,8 +5,9 @@
 #include <chipmunk/chipmunk.h>
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <math.h>
 
 void coords_use_local(Entity *ent) {
     cpBody *body = entity_body(ent);

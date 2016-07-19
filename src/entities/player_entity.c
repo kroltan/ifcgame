@@ -10,13 +10,16 @@
 #include "entities/weapon_entity.h"
 
 #include <allegro5/allegro.h>
+#include <allegro5/allegro_color.h>
 #include <allegro5/allegro_primitives.h>
 #include <chipmunk/chipmunk.h>
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
-static const float MOVE_SPEED = 10;
+static const float MOVE_SPEED = 5;
+static const float ROTATION_CAP = 15;
 static const int MAX_HEALTH = 100;
 const unsigned int PLAYER_DEATH_EVENT_ID = 131415;
 
@@ -35,7 +38,7 @@ void player_init(Entity *ent) {
     cpSpaceAddShape(game.space, data->head);
     cpShapeSetFriction(data->head, 0.5);
 
-    cpBodySetMass(body, 60);
+    cpBodySetMass(body, 80);
     cpBodySetMoment(body, cpMomentForCircle(10, .5, 0, cpvzero));
 }
 
@@ -47,16 +50,15 @@ void player_update(Entity *ent) {
     PlayerEntityData *data = entity_data(ent);
 
     if (!data->controller) {
-        data->controller = cpSpaceAddBody(game.space, cpBodyNew(1, 1));
+        data->controller = cpSpaceAddBody(game.space, cpBodyNewKinematic());
 
         cpConstraint *pivot, *gear;
-        physics_add_top_down_friction(body, data->controller, 10 * MOVE_SPEED, &pivot, &gear);
+        physics_add_top_down_friction(data->controller, body, 10 * MOVE_SPEED, &pivot, &gear);
 
         cpConstraintSetErrorBias(pivot, 0);
-    }
-
-    if (cvar_getd_player(entity_owner(ent), "health") < 0) {
-        entity_destroy(ent);
+        cpConstraintSetErrorBias(gear, 0);
+        cpConstraintSetMaxBias(gear, ROTATION_CAP);
+        cpConstraintSetMaxForce(gear, INFINITY);
     }
 
     cpVect move_direction = cpvzero;
@@ -79,30 +81,54 @@ void player_update(Entity *ent) {
     }
     move_direction = cpvrotate(cpBodyGetRotation(body), move_direction);
 
-    cpBodySetPosition(data->controller, cpBodyGetPosition(body));
-    cpBodySetVelocity(data->controller, move_direction);
-
     cpVect mouse_delta = cpvsub(keymap_mouse_world(), cpBodyGetPosition(body));
-    float turn = cpvtoangle(mouse_delta);
-    cpBodySetAngle(body, turn);
+    float turn = cpvtoangle(cpvunrotate(cpBodyGetRotation(body), mouse_delta));
+
+    if (cpvlength(mouse_delta) < cpCircleShapeGetRadius(data->head)) {
+        move_direction = cpvzero;
+    }
+
+    cpBodySetVelocity(data->controller, move_direction);
+    cpBodySetAngle(data->controller, cpBodyGetAngle(body) - turn);
 
     entity_flag_dirty(ent, true);
 }
 
 void player_draw(Entity *ent) {
     PlayerEntityData *data = entity_data(ent);
+    cpBody *body = entity_body(ent);
 
-    float health_percent = cvar_getd_player(entity_owner(ent), "health") / (float) MAX_HEALTH;
-    printf("%f\n", health_percent);
     float radius = cpCircleShapeGetRadius(data->head);
     al_draw_circle(0, 0, radius, al_map_rgb(255, 255, 255), 0);
-    al_draw_arc(0, 0, 1.3 * radius, 0, 2 * ALLEGRO_PI * health_percent, al_map_rgb(0, 255, 0), 0.1);
+
+    float health_percent = cvar_getd_player(entity_owner(ent), "health") / (float) MAX_HEALTH;
+    al_draw_arc(
+        0, 0, 1.3 * radius,
+        0, 2 * ALLEGRO_PI * health_percent,
+        al_color_hsl(120 * health_percent, 1, 0.5), //hue 0 = red, hue 120 = green
+        0.1
+    );
+
+    ALLEGRO_TRANSFORM text_adjust;
+    al_identity_transform(&text_adjust);
+    al_rotate_transform(&text_adjust, -cpBodyGetAngle(body));
+    al_compose_transform(&text_adjust, al_get_current_transform());
+    al_use_transform(&text_adjust);
+
+    float edge = -cpCircleShapeGetRadius(data->head) * 1.3;
     draw_textf(
         game.default_font,
-        al_map_rgb(255, 255, 255), 0,
-        -cpCircleShapeGetRadius(data->head),
-        1, TEXT_HALIGN_CENTER,
+        al_map_rgb(255, 255, 255),
+        0, edge,
+        0.5, TEXT_HALIGN_CENTER,
         "%s", cvar_get_player(entity_owner(ent), "name")
+    );
+    draw_textf(
+        game.default_font,
+        al_map_rgb(255, 255, 255),
+        0, edge - 0.5,
+        0.3, TEXT_HALIGN_CENTER,
+        "%d", cvar_getd_player(entity_owner(ent), "kills")
     );
 }
 
@@ -157,4 +183,17 @@ Entity *player_get_for_id(uint32_t user_id) {
         return NULL;
     }
     return entity_from_id(atoi(entid_str));
+}
+
+void player_hurt(uint32_t user_id, int damage, uint32_t inflictor) {
+    int health = cvar_getd_player(user_id, "health");
+    health -= damage;
+    cvar_setd_player(user_id, "health", health);
+
+    if (health < 0) {
+        entity_destroy(entity_from_id(cvar_getd_player(user_id, "ent_id")));
+
+        int kills = cvar_getd_player(inflictor, "kills");
+        cvar_setd_player(inflictor, "kills", kills + 1);
+    }
 }
