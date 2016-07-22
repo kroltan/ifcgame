@@ -28,6 +28,7 @@ void entity_each(void (*iter)(Entity *, void *), void *argument);
 Entity *entity_from_id(uint32_t id);
 
 void entity_step();
+void entity_reset_all();
 
 Entity *entity_new(const EntityType *type);
 void entity_destroy(Entity *ent);
@@ -47,6 +48,7 @@ void entity_set_keep(Entity *ent, bool keep);
 bool entity_get_keep(const Entity *ent);
 
 const EntityType *entity_type_from_name(const char *ent_type_name);
+void entity_all_of_type(const EntityType *type, void (*iter)(Entity *, void *), void *data);
 void entity_sync(const char *data);
 
 #endif // ENTITY_H

@@ -56,7 +56,7 @@ void entity_send(const Entity *ent) {
 }
 
 void entity_each(void (*iter)(Entity *, void *), void *argument) {
-    if (!all_entities) return;
+    if (!all_entities || !list_length(all_entities)) return;
 
     const size_t last_index = list_length(all_entities) - 1;
     for (size_t i = 0; i <= last_index; ++i) {
@@ -85,6 +85,7 @@ Entity *_entity_new(const EntityType *type, bool broadcast, uint32_t id, uint32_
 
     Entity *ent = malloc(sizeof(Entity));
     ent->TAG = Entity_TAG;
+    ent->keep = false;
     ent->id = id;
     ent->owner_id = owner_id;
     ent->last_sync = 0;
@@ -167,7 +168,9 @@ void entity_destroy(Entity *ent) {
     if (!destroy_queue) {
         destroy_queue = list_new();
     }
-    list_push(destroy_queue, ent);
+    if (!list_index_of(destroy_queue, ent, NULL)) {
+        list_push(destroy_queue, ent);
+    }
 }
 
 void entity_step() {
@@ -177,6 +180,15 @@ void entity_step() {
         Entity *ent = list_pop(destroy_queue);
         _entity_destroy(ent, true);
     }
+}
+
+void entity_reset_all() {
+    if (!all_entities) return;
+    for (size_t i = 0; i < list_length(all_entities); ++i) {
+        _entity_destroy(list_nth(all_entities, i), false);
+    }
+    if (destroy_queue) list_clear(destroy_queue);
+    list_clear(all_entities);
 }
 
 void entity_update(Entity *ent) {
@@ -259,6 +271,25 @@ const EntityType *entity_type_from_name(const char *ent_type_name) {
         }
     }
     return NULL;
+}
+
+typedef struct {
+    const EntityType *type;
+    void *data;
+    void (*iter)(Entity *, void *);
+} _entity_aot_state;
+void _entity_aot_iter(Entity *ent, void *data) {
+    _entity_aot_state *state = data;
+    if (state->type == ent->type) {
+        state->iter(ent, state->data);
+    }
+}
+void entity_all_of_type(const EntityType *type, void (*iter)(Entity *, void *), void *data) {
+    _entity_aot_state state;
+    state.type = type;
+    state.iter = iter;
+    state.data = data;
+    entity_each(_entity_aot_iter, &state);
 }
 
 void entity_sync(const char *data) {

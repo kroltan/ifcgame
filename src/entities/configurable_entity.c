@@ -52,7 +52,7 @@ void configurable_draw(Entity *ent) {
     if (!data->initialized) return;
 
     if (data->sprite) {
-        draw_sprite(data->sprite, 0, 0, data->sprite_scale);
+        draw_sprite(data->sprite, 0, 0, data->sprite_scale, 0);
     }
 }
 

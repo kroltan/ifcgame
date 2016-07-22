@@ -9,4 +9,6 @@ void init_console();
 bool console_on_event(ALLEGRO_EVENT *event);
 void console_draw();
 
+void console_run(const char *command);
+
 #endif // CONSOLE_H

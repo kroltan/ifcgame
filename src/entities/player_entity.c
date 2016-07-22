@@ -28,7 +28,15 @@ typedef struct {
     cpShape *head;
 } PlayerEntityData;
 
+ALLEGRO_BITMAP *player_sprite;
+
 void player_init(Entity *ent) {
+    if (!player_sprite) {
+        ALLEGRO_PATH *path = game_asset_path("player.png");
+        player_sprite = al_load_bitmap(al_path_cstr(path, ALLEGRO_NATIVE_PATH_SEP));
+        al_destroy_path(path);
+    }
+
     PlayerEntityData *data = entity_data(ent);
     cpBody *body = entity_body(ent);
 
@@ -55,10 +63,11 @@ void player_update(Entity *ent) {
         cpConstraint *pivot, *gear;
         physics_add_top_down_friction(data->controller, body, 10 * MOVE_SPEED, &pivot, &gear);
 
-        cpConstraintSetErrorBias(pivot, 0);
+        cpConstraintSetErrorBias(pivot, 0.01);
+        cpConstraintSetMaxForce(pivot, 10000);
         cpConstraintSetErrorBias(gear, 0);
         cpConstraintSetMaxBias(gear, ROTATION_CAP);
-        cpConstraintSetMaxForce(gear, INFINITY);
+        cpConstraintSetMaxForce(gear, 10000);
     }
 
     cpVect move_direction = cpvzero;
@@ -81,33 +90,39 @@ void player_update(Entity *ent) {
     }
     move_direction = cpvrotate(cpBodyGetRotation(body), move_direction);
 
-    cpVect mouse_delta = cpvsub(keymap_mouse_world(), cpBodyGetPosition(body));
+    cpVect player_pos = cpBodyGetPosition(body);
+    cpVect mouse_delta = cpvsub(keymap_mouse_world(), player_pos);
     float turn = cpvtoangle(cpvunrotate(cpBodyGetRotation(body), mouse_delta));
 
     if (cpvlength(mouse_delta) < cpCircleShapeGetRadius(data->head)) {
         move_direction = cpvzero;
     }
 
+    cpBodySetPosition(data->controller, player_pos);
     cpBodySetVelocity(data->controller, move_direction);
     cpBodySetAngle(data->controller, cpBodyGetAngle(body) - turn);
 
     entity_flag_dirty(ent, true);
+    game.camera_position = player_pos;
 }
 
 void player_draw(Entity *ent) {
     PlayerEntityData *data = entity_data(ent);
     cpBody *body = entity_body(ent);
 
-    float radius = cpCircleShapeGetRadius(data->head);
-    al_draw_circle(0, 0, radius, al_map_rgb(255, 255, 255), 0);
-
+    float radius = 1.6 * cpCircleShapeGetRadius(data->head);
     float health_percent = cvar_getd_player(entity_owner(ent), "health") / (float) MAX_HEALTH;
+    ALLEGRO_COLOR health_color = al_color_hsl(120 * health_percent, 1, 0.5); //hue 0 = red, hue 120 = green
+    health_color.a = 0.5;
     al_draw_arc(
-        0, 0, 1.3 * radius,
+        0, 0, radius,
         0, 2 * ALLEGRO_PI * health_percent,
-        al_color_hsl(120 * health_percent, 1, 0.5), //hue 0 = red, hue 120 = green
-        0.1
+        health_color,
+        0.2
     );
+    if (player_sprite) {
+        draw_sprite(player_sprite, 0, 0, 2, -ALLEGRO_PI / 2);
+    }
 
     ALLEGRO_TRANSFORM text_adjust;
     al_identity_transform(&text_adjust);
@@ -115,7 +130,7 @@ void player_draw(Entity *ent) {
     al_compose_transform(&text_adjust, al_get_current_transform());
     al_use_transform(&text_adjust);
 
-    float edge = -cpCircleShapeGetRadius(data->head) * 1.3;
+    float edge = -radius;
     draw_textf(
         game.default_font,
         al_map_rgb(255, 255, 255),
@@ -179,7 +194,7 @@ Entity *player_new_with_id(uint32_t user_id) {
 
 Entity *player_get_for_id(uint32_t user_id) {
     const char *entid_str = cvar_get_player(user_id, "ent_id");
-    if (!entid_str) {
+    if (!entid_str || !strlen(entid_str)) {
         return NULL;
     }
     return entity_from_id(atoi(entid_str));
@@ -192,6 +207,7 @@ void player_hurt(uint32_t user_id, int damage, uint32_t inflictor) {
 
     if (health < 0) {
         entity_destroy(entity_from_id(cvar_getd_player(user_id, "ent_id")));
+        cvar_set_player(user_id, "ent_id", "");
 
         int kills = cvar_getd_player(inflictor, "kills");
         cvar_setd_player(inflictor, "kills", kills + 1);

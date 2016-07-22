@@ -107,6 +107,7 @@ void game_init() {
     init_core();
     init_connection();
 
+    game.camera_size = 10;
 	game.space = cpSpaceNew();
 	cpSpaceSetGravity(game.space, cpv(0, 0));
 	cpSpaceSetDamping(game.space, 0.5);
@@ -168,7 +169,7 @@ void game_loop() {
         ALLEGRO_TRANSFORM identity;
         al_identity_transform(&identity);
 
-        camera_set(0, 0, 10);
+        camera_set(game.camera_position.x, game.camera_position.y, game.camera_size);
         al_clear_to_color(al_map_rgb(0, 0, 0));
 
         #ifdef PHYSICS_DRAW_DEBUG
@@ -210,6 +211,7 @@ void game_shutdown() {
 int main() {
     srand(time(NULL));
     game_init();
+    scene_load("menu");
 
     while (game.running) game_loop();
 

@@ -36,11 +36,14 @@ void screen_to_world(float *x, float *y) {
     al_transform_coordinates(&t, x, y);
 }
 
-void draw_sprite(ALLEGRO_BITMAP *bmp, float x, float y, float scale) {
+void draw_sprite(ALLEGRO_BITMAP *bmp, float x, float y, float scale, float angle) {
     ALLEGRO_TRANSFORM t, current;
     al_copy_transform(&current, al_get_current_transform());
-    al_identity_transform(&t);
-    al_scale_transform(&t, scale, scale);
+    al_build_transform(&t,
+        x, y,
+        scale, scale,
+        angle
+    );
     al_compose_transform(&t, &current);
     al_use_transform(&t);
 

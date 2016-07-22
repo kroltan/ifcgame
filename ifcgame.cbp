@@ -15,6 +15,7 @@
 					<Add option="-g" />
 					<Add option="-DPHYSICS_DRAW_DEBUG" />
 					<Add directory="include/entities" />
+					<Add directory="include" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
@@ -31,6 +32,12 @@
 				<Linker>
 					<Add option="-s" />
 				</Linker>
+			</Target>
+			<Target title="Windows">
+				<Option output="bin/Windows/ifcgame" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Windows" />
+				<Option type="0" />
+				<Option compiler="gnu_gcc_crosss-compiler_for_windows_mingw-w64" />
 			</Target>
 		</Build>
 		<Compiler>
@@ -62,7 +69,7 @@
 			<Add library="allegro_monolith" />
 		</Linker>
 		<ExtraCommands>
-			<Add before='bash &quot;$(PROJECT_DIR)build.sh&quot; &quot;$(PROJECT_DIR)&quot;' />
+			<Add before='bash &quot;$(PROJECT_DIR)build.sh&quot; &quot;$(PROJECT_DIR)&quot; &quot;$(TARGET_OUTPUT_DIR)&quot;' />
 			<Add after='cp -r &quot;$(PROJECT_DIR)assets/&quot; &quot;$(TARGET_OUTPUT_DIR)&quot;' />
 			<Mode after="always" />
 		</ExtraCommands>
@@ -70,12 +77,14 @@
 		<Unit filename="assets/config.ini" />
 		<Unit filename="assets/entities/test.ini" />
 		<Unit filename="assets/entities/wall.ini" />
+		<Unit filename="assets/scenes/menu.ini" />
 		<Unit filename="assets/scenes/test.ini" />
 		<Unit filename="include/config.h" />
 		<Unit filename="include/connection.h" />
 		<Unit filename="include/console.h" />
 		<Unit filename="include/cvars.h" />
 		<Unit filename="include/entities/configurable_entity.h" />
+		<Unit filename="include/entities/menu_entity.h" />
 		<Unit filename="include/entities/player_entity.h" />
 		<Unit filename="include/entities/player_spawn_entity.h" />
 		<Unit filename="include/entities/weapon_entity.h" />
@@ -91,6 +100,7 @@
 		<Unit filename="include/physics.h" />
 		<Unit filename="include/physics_debug.h" />
 		<Unit filename="include/scene.h" />
+		<Unit filename="include/textbox.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -107,6 +117,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/entities/configurable_entity.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/entities/menu_entity.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/entities/player_entity.c">
@@ -146,6 +159,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/scene.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/textbox.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Extensions>

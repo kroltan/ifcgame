@@ -69,6 +69,8 @@ bool connection_host(uint16_t port, size_t max_players) {
     host = enet_host_create(&address, max_players, CHANNEL_COUNT, 0, 0);
 
     if (host) {
+        entity_reset_all();
+
         ALLEGRO_EVENT event;
         event.type = CONNECTION_JOIN_EVENT_ID;
         al_emit_user_event(&event_source, &event, NULL);
@@ -93,7 +95,7 @@ bool connection_join(const char *hostname, uint16_t port) {
 
     ENetEvent event;
     if (enet_host_service(host, &event, 1000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
-
+        entity_reset_all();
     }
 
     return host != NULL;
@@ -190,6 +192,8 @@ void connection_on_event(ALLEGRO_EVENT *event) {
             ALLEGRO_EVENT event;
             event.type = CONNECTION_JOIN_EVENT_ID;
             al_emit_user_event(&event_source, &event, NULL);
+
+            entity_reset_all();
         }
     } else if (event->type == CONSOLE_EVENT_ID) {
         const char *command = (const char *)event->user.data1;

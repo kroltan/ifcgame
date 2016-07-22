@@ -4,7 +4,9 @@
 
 #include "game_state.h"
 #include "connection.h"
+#include "graphics.h"
 #include "physics.h"
+#include "keymap.h"
 #include "cvars.h"
 
 #include <allegro5/allegro_primitives.h>
@@ -16,13 +18,21 @@ static const float WEAPON_WIDTH = 0.25;
 static const float WEAPON_HEIGHT = 2.0;
 static const float WEAPON_DAMAGE = 1.5;
 static const float WEAPON_HURT_THRESHOLD = 1;
+static const float WEAPON_SWING_FORCE = 7;
 
 typedef struct {
     Entity *owner;
     cpConstraint *player_joint;
 } WeaponEntityData;
 
+ALLEGRO_BITMAP *weapon_sprite;
+
 void weapon_init(Entity *ent) {
+    if (!weapon_sprite) {
+        ALLEGRO_PATH *path = game_asset_path("sword.png");
+        weapon_sprite = al_load_bitmap(al_path_cstr(path, ALLEGRO_NATIVE_PATH_SEP));
+        al_destroy_path(path);
+    }
     cpBody *body = entity_body(ent);
 
     cpShape *shape = cpBoxShapeNew(body, WEAPON_WIDTH, WEAPON_HEIGHT, 0);
@@ -42,20 +52,31 @@ void weapon_update(Entity *ent) {
         data->player_joint = cpSpaceAddConstraint(game.space, cpPivotJointNew2(
             body,
             entity_body(data->owner),
-            cpv(-WEAPON_WIDTH, -WEAPON_HEIGHT / 2), cpv(1, 0)
+            cpv(0, -WEAPON_HEIGHT / 2), cpv(1, 0)
         ));
         cpConstraintSetErrorBias(data->player_joint, 0);
+    }
+
+    int mult = 0;
+    if (keymap_is_held("mouse1")) mult++;
+    if (keymap_is_held("mouse2")) mult--;
+
+    if (mult) {
+        cpVect force_pos = cpv(0, WEAPON_HEIGHT);
+        cpVect weapon_pos = cpBodyGetPosition(body);
+        cpVect world_force_pos = cpvadd(weapon_pos, cpvrotate(cpBodyGetRotation(body), force_pos));
+        cpVect mouse_delta = cpvsub(keymap_mouse_world(), world_force_pos);
+        cpVect force = cpvmult(cpvnormalize(mouse_delta), mult *WEAPON_SWING_FORCE);
+        cpBodyApplyForceAtWorldPoint(body, force, world_force_pos);
     }
 }
 
 void weapon_draw(Entity *ent) {
     (void) ent;
 
-    al_draw_rectangle(
-        -WEAPON_WIDTH / 2, -WEAPON_HEIGHT / 2,
-        WEAPON_WIDTH / 2, WEAPON_HEIGHT / 2,
-        al_map_rgb(255, 255, 255), 0
-    );
+    if (weapon_sprite) {
+        draw_sprite(weapon_sprite, 2 *WEAPON_WIDTH / 3, 0, 1.2 * WEAPON_HEIGHT, 0);
+    }
 }
 
 void weapon_collide(Entity *ent, cpArbiter *arb) {

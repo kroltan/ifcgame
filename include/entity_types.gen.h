@@ -3,6 +3,7 @@
 
 #include <entities/weapon_entity.h>
 #include <entities/player_spawn_entity.h>
+#include <entities/menu_entity.h>
 #include <entities/configurable_entity.h>
 #include <entities/player_entity.h>
 
@@ -11,6 +12,7 @@
 const EntityType *ALL_ENTITY_TYPES[] = {
 	&WeaponEntity,
 	&PlayerSpawnEntity,
+	&MenuEntity,
 	&ConfigurableEntity,
 	&PlayerEntity,
 };

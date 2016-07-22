@@ -18,6 +18,8 @@ typedef struct {
     ALLEGRO_FONT *default_font;
     bool running;
     float last_frame, delta_time;
+    cpVect camera_position;
+    float camera_size;
 } GameState;
 
 GameState game;
