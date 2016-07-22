@@ -33,12 +33,6 @@
 					<Add option="-s" />
 				</Linker>
 			</Target>
-			<Target title="Windows">
-				<Option output="bin/Windows/ifcgame" prefix_auto="1" extension_auto="1" />
-				<Option object_output="obj/Windows" />
-				<Option type="0" />
-				<Option compiler="gnu_gcc_crosss-compiler_for_windows_mingw-w64" />
-			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-pedantic" />
