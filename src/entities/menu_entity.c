@@ -53,7 +53,20 @@ void menu_draw(Entity *ent) {
     draw_textf(game.default_font, al_map_rgb(255, 255, 255), 0, -1, MENU_FONT_SIZE, TEXT_HALIGN_RIGHT, "PORT: ");
     textbox_draw(&data->port, 0, -1);
 
-    draw_textf(game.default_font, al_map_rgb(255, 255, 255), 0, -3, MENU_FONT_SIZE, TEXT_HALIGN_CENTER, "Press ENTER to join");
+    draw_textf(
+        game.default_font,
+        al_map_rgb(255, 255, 255),
+        0, -3,
+        MENU_FONT_SIZE, TEXT_HALIGN_CENTER,
+        "Aperte ENTER para conectar"
+    );
+    draw_textf(
+        game.default_font,
+        al_map_rgb(255, 255, 255),
+        0, -4.5,
+        MENU_FONT_SIZE / 2, TEXT_HALIGN_CENTER,
+        "Código e sprites por Leonardo Giovanni Scur"
+    );
 }
 
 void menu_event(Entity *ent, ALLEGRO_EVENT *ev) {
