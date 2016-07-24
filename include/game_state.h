@@ -20,6 +20,7 @@ typedef struct {
     float last_frame, delta_time;
     cpVect camera_position;
     float camera_size;
+    bool _redraw;
 } GameState;
 
 GameState game;

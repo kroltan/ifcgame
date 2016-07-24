@@ -18,7 +18,7 @@ static const float WEAPON_WIDTH = 0.25;
 static const float WEAPON_HEIGHT = 2.0;
 static const float WEAPON_DAMAGE = 1.5;
 static const float WEAPON_HURT_THRESHOLD = 1;
-static const float WEAPON_SWING_FORCE = 7;
+static const float WEAPON_SWING_FORCE = 9;
 
 typedef struct {
     Entity *owner;
@@ -49,6 +49,7 @@ void weapon_update(Entity *ent) {
     WeaponEntityData *data = entity_data(ent);
 
     if (data->owner && !data->player_joint) {
+        cvar_setd_player(entity_owner(ent), "weapon_id", entity_id(ent));
         data->player_joint = cpSpaceAddConstraint(game.space, cpPivotJointNew2(
             body,
             entity_body(data->owner),
@@ -66,7 +67,7 @@ void weapon_update(Entity *ent) {
         cpVect weapon_pos = cpBodyGetPosition(body);
         cpVect world_force_pos = cpvadd(weapon_pos, cpvrotate(cpBodyGetRotation(body), force_pos));
         cpVect mouse_delta = cpvsub(keymap_mouse_world(), world_force_pos);
-        cpVect force = cpvmult(cpvnormalize(mouse_delta), mult *WEAPON_SWING_FORCE);
+        cpVect force = cpvmult(cpvnormalize(mouse_delta), mult * WEAPON_SWING_FORCE);
         cpBodyApplyForceAtWorldPoint(body, force, world_force_pos);
     }
 }

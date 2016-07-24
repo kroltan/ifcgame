@@ -147,22 +147,7 @@ void _gui_single_entity(Entity *ent, void *data) {
 void game_loop() {
     entity_step();
 
-    ALLEGRO_EVENT event;
-    al_wait_for_event(game.event_queue, &event);
-
-    scene_on_event(&event);
-    connection_on_event(&event);
-    cvar_on_event(&event);
-    if (!console_on_event(&event)) {
-        keymap_on_event(&event);
-    }
-    entity_each(_handle_event, &event);
-
-    if (event.type == ALLEGRO_EVENT_DISPLAY_RESIZE && event.display.source == game.display) {
-        al_acknowledge_resize(game.display);
-    }
-
-    if (event.type == ALLEGRO_EVENT_TIMER && event.timer.source == game.main_timer) {
+    if (game._redraw && al_event_queue_is_empty(game.event_queue)) {
         cpSpaceStep(game.space, 0.016);
         connection_update();
 
@@ -194,6 +179,29 @@ void game_loop() {
 
         al_flip_display();
         keymap_update();
+    }
+
+    ALLEGRO_EVENT event;
+    al_wait_for_event(game.event_queue, &event);
+
+    scene_on_event(&event);
+    connection_on_event(&event);
+    cvar_on_event(&event);
+    if (!console_on_event(&event)) {
+        keymap_on_event(&event);
+    }
+    entity_each(_handle_event, &event);
+
+    if (event.type == ALLEGRO_EVENT_DISPLAY_RESIZE && event.display.source == game.display) {
+        al_acknowledge_resize(game.display);
+    }
+
+    if (event.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
+        game.running = false;
+    }
+
+    if (event.type == ALLEGRO_EVENT_TIMER && event.timer.source == game.main_timer) {
+        game._redraw = true;
     }
 
     if (ALLEGRO_EVENT_TYPE_IS_USER(event.type)) {

@@ -19,7 +19,7 @@
 #include <math.h>
 
 static const float MOVE_SPEED = 5;
-static const float ROTATION_CAP = 15;
+static const float ROTATION_CAP = 10;
 static const int MAX_HEALTH = 100;
 const unsigned int PLAYER_DEATH_EVENT_ID = 131415;
 
@@ -208,6 +208,9 @@ void player_hurt(uint32_t user_id, int damage, uint32_t inflictor) {
     if (health < 0) {
         entity_destroy(entity_from_id(cvar_getd_player(user_id, "ent_id")));
         cvar_set_player(user_id, "ent_id", "");
+        entity_destroy(entity_from_id(cvar_getd_player(user_id, "weapon_id")));
+        cvar_set_player(user_id, "weapon_id", "");
+
 
         int kills = cvar_getd_player(inflictor, "kills");
         cvar_setd_player(inflictor, "kills", kills + 1);
